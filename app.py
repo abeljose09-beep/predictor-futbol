@@ -249,7 +249,6 @@ with col_left:
     """, unsafe_allow_html=True)
     equipo_local = st.selectbox("Equipo Local", equipos, label_visibility="collapsed")
 
-    # Escudo local
     url_local = get_escudo(equipo_local)
     if url_local:
         st.markdown(f"""
@@ -335,16 +334,13 @@ if predecir:
         """, unsafe_allow_html=True)
         st.stop()
 
-    # Preparar features y predecir
     try:
-        # Estadísticas históricas del dataset (últimos 10 partidos)
         N = 10
         partidos_local_home = df[df["HomeTeam"] == equipo_local].tail(N)
         partidos_local_away = df[df["AwayTeam"] == equipo_local].tail(N)
         partidos_visit_home = df[df["HomeTeam"] == equipo_visitante].tail(N)
         partidos_visit_away = df[df["AwayTeam"] == equipo_visitante].tail(N)
 
-        # Goles a favor local (sumando como local y visitante)
         gf_h = list(partidos_local_home["FTHG"]) + list(partidos_local_away["FTAG"])
         ga_h = list(partidos_local_home["FTAG"]) + list(partidos_local_away["FTHG"])
         gf_a = list(partidos_visit_home["FTHG"]) + list(partidos_visit_away["FTAG"])
@@ -355,7 +351,6 @@ if predecir:
         goles_favor_visit  = np.mean(gf_a[-N:]) if gf_a else 1.1
         goles_contra_visit = np.mean(ga_a[-N:]) if ga_a else 1.3
 
-        # Puntos por partido (últimos N)
         def pts(ftr_series, lado):
             return [3 if f==lado else (1 if f=='D' else 0) for f in ftr_series]
 
@@ -364,17 +359,14 @@ if predecir:
         hpts = np.mean(pts_h[-N:]) if pts_h else 1.0
         apts = np.mean(pts_a[-N:]) if pts_a else 1.0
 
-        # Tiros (últimos partidos como local/visitante)
         hs_val  = partidos_local_home["HS"].mean()  if len(partidos_local_home) > 0 else 12.0
         as_val  = partidos_visit_away["AS"].mean()  if len(partidos_visit_away) > 0 else 11.0
         hst_val = partidos_local_home["HST"].mean() if len(partidos_local_home) > 0 else 4.5
         ast_val = partidos_visit_away["AST"].mean() if len(partidos_visit_away) > 0 else 4.0
 
-        # Todos los partidos para referencia (para stats display)
         partidos_local = df[df["HomeTeam"] == equipo_local]
         partidos_visita = df[df["AwayTeam"] == equipo_visitante]
 
-        # H2H
         h2h = df[
             ((df["HomeTeam"] == equipo_local) & (df["AwayTeam"] == equipo_visitante)) |
             ((df["HomeTeam"] == equipo_visitante) & (df["AwayTeam"] == equipo_local))
@@ -390,7 +382,6 @@ if predecir:
         empates_h2h = len(h2h[h2h["FTR"] == "D"])
         total_h2h = len(h2h)
 
-        # Features exactas del modelo entrenado
         features = np.array([[
             goles_favor_local, goles_contra_local,
             goles_favor_visit, goles_contra_visit,
@@ -426,13 +417,10 @@ if predecir:
     tab1, tab2, tab3 = st.tabs(["📊  PREDICCIÓN", "⚔️  HEAD TO HEAD", "📈  ESTADÍSTICAS"])
 
     with tab1:
-        # Match header con escudos
         st.markdown(f"""
         <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; 
                     padding:28px 32px; margin-bottom:24px;">
             <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
-                
-                <!-- Local -->
                 <div style="display:flex; flex-direction:column; align-items:center; gap:12px; flex:1;">
                     {escudo_html(equipo_local, 72)}
                     <span style="font-family:'Bebas Neue',sans-serif; font-size:20px; 
@@ -440,8 +428,6 @@ if predecir:
                         {equipo_local}
                     </span>
                 </div>
-
-                <!-- Centro -->
                 <div style="display:flex; flex-direction:column; align-items:center; gap:4px;">
                     <span style="font-family:'Space Mono',monospace; font-size:10px; 
                                  letter-spacing:3px; color:#4A6075; text-transform:uppercase;">
@@ -458,8 +444,6 @@ if predecir:
                         </span>
                     </div>
                 </div>
-
-                <!-- Visitante -->
                 <div style="display:flex; flex-direction:column; align-items:center; gap:12px; flex:1;">
                     {escudo_html(equipo_visitante, 72)}
                     <span style="font-family:'Bebas Neue',sans-serif; font-size:20px; 
@@ -471,7 +455,6 @@ if predecir:
         </div>
         """, unsafe_allow_html=True)
 
-        # Barras de probabilidad
         st.markdown(f"""
         <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px;">
             <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; 
@@ -484,7 +467,6 @@ if predecir:
         </div>
         """, unsafe_allow_html=True)
 
-        # Estadísticas de goles
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
         col1, col2, col3, col4 = st.columns(4)
         stats = [
@@ -519,7 +501,6 @@ if predecir:
             </div>
             """, unsafe_allow_html=True)
         else:
-            # Resumen H2H con escudos
             st.markdown(f"""
             <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; 
                         padding:24px 28px; margin-bottom:20px;">
@@ -528,7 +509,6 @@ if predecir:
                     Historial de enfrentamientos · {total_h2h} partidos
                 </div>
                 <div style="display:flex; align-items:center; gap:16px;">
-                    <!-- Local -->
                     <div style="flex:1; text-align:center;">
                         {escudo_html(equipo_local, 48)}
                         <div style="font-family:'Bebas Neue',sans-serif; font-size:42px; 
@@ -536,7 +516,6 @@ if predecir:
                         <div style="font-family:'Space Mono',monospace; font-size:9px; 
                                     color:#4A6075; letter-spacing:2px;">VICTORIAS</div>
                     </div>
-                    <!-- Empates -->
                     <div style="flex:1; text-align:center; border-left:1px solid #1E2A35; 
                                 border-right:1px solid #1E2A35; padding:0 16px;">
                         <div style="font-family:'Bebas Neue',sans-serif; font-size:42px; 
@@ -544,7 +523,6 @@ if predecir:
                         <div style="font-family:'Space Mono',monospace; font-size:9px; 
                                     color:#4A6075; letter-spacing:2px;">EMPATES</div>
                     </div>
-                    <!-- Visitante -->
                     <div style="flex:1; text-align:center;">
                         {escudo_html(equipo_visitante, 48)}
                         <div style="font-family:'Bebas Neue',sans-serif; font-size:42px; 
@@ -556,7 +534,6 @@ if predecir:
             </div>
             """, unsafe_allow_html=True)
 
-            # Lista de partidos
             h2h_display = h2h[["HomeTeam", "FTHG", "FTAG", "AwayTeam", "FTR"]].tail(10).iloc[::-1]
             for _, row in h2h_display.iterrows():
                 ganador_color = {
@@ -591,38 +568,38 @@ if predecir:
                 """, unsafe_allow_html=True)
 
     with tab3:
-    stats_modelo = {
-        "Partidos analizados (local)": len(partidos_local),
-        "Partidos analizados (visitante)": len(partidos_visita),
-        "Total partidos en dataset": len(df),
-        "Jornada seleccionada": jornada,
-        "Forma local": racha_local,
-        "Forma visitante": racha_visit,
-    }
+        stats_modelo = {
+            "Partidos analizados (local)": len(partidos_local),
+            "Partidos analizados (visitante)": len(partidos_visita),
+            "Total partidos en dataset": len(df),
+            "Jornada seleccionada": jornada,
+            "Forma local": racha_local,
+            "Forma visitante": racha_visit,
+        }
 
-    filas_html = ""
-    for k, v in stats_modelo.items():
-        filas_html += f"""
-        <div style="display:flex; justify-content:space-between; padding:10px 0; 
-                    border-bottom:1px solid #1E2A35;">
-            <span style="font-family:'DM Sans',sans-serif; font-size:14px; color:#4A6075;">
-                {k}
-            </span>
-            <span style="font-family:'Space Mono',monospace; font-size:14px; color:#E8EDF2;">
-                {v}
-            </span>
-        </div>
-        """
+        filas_html = ""
+        for k, v in stats_modelo.items():
+            filas_html += f"""
+            <div style="display:flex; justify-content:space-between; padding:10px 0; 
+                        border-bottom:1px solid #1E2A35;">
+                <span style="font-family:'DM Sans',sans-serif; font-size:14px; color:#4A6075;">
+                    {k}
+                </span>
+                <span style="font-family:'Space Mono',monospace; font-size:14px; color:#E8EDF2;">
+                    {v}
+                </span>
+            </div>
+            """
 
-    st.markdown(f"""
-    <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px;">
-        <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; 
-                    color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
-            Estadísticas del modelo
+        st.markdown(f"""
+        <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px;">
+            <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; 
+                        color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
+                Estadísticas del modelo
+            </div>
+            {filas_html}
         </div>
-        {filas_html}
-    </div>
-    """, unsafe_allow_html=True)
+        """, unsafe_allow_html=True)
 
     # ── VEREDICTO FINAL ──
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
@@ -662,7 +639,6 @@ if predecir:
     </div>
     """, unsafe_allow_html=True)
 
-    # Disclaimer
     st.markdown("""
     <div style="text-align:center; margin-top:32px;">
         <span style="font-family:'Space Mono',monospace; font-size:9px; letter-spacing:2px; 
