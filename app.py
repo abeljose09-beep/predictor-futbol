@@ -597,7 +597,7 @@ if predecir:
                         color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
                 Estadísticas del modelo
             </div>
-            {filas_html}
+            """ + filas_html + """
         </div>
         """, unsafe_allow_html=True)
 
