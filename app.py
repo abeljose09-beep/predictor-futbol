@@ -232,15 +232,15 @@ except Exception as e:
     st.stop()
 
 LIGAS_DISPLAY = {
-    "🏴󠁧󠁢󠁥󠁮󠁧󠁿  Premier League": "premier",
-    "🇪🇸  La Liga":        "laliga",
-    "🇮🇹  Serie A":         "seriea",
-    "🇩🇪  Bundesliga":      "bundesliga",
-    "🇫🇷  Ligue 1":         "ligue1",
-    "🇳🇱  Eredivisie":      "eredivisie",
-    "🏴󠁧󠁢󠁳󠁣󠁴󠁿  Escocia":        "escocia",
-    "🇵🇹  Portugal":        "portugal",
-    "🏴󠁧󠁢󠁥󠁮󠁧󠁿  Championship":   "championship",
+    "🏴󠁧󠁢󠁥󠁮󠁧󠁿  Premier League":   "premier_25",
+    "🇪🇸  La Liga":              "laliga_25",
+    "🇮🇹  Serie A":               "seriea_25",
+    "🇩🇪  Bundesliga":            "bundesliga_25",
+    "🇫🇷  Ligue 1":               "ligue1_25",
+    "🇳🇱  Eredivisie":            "eredivisie_25",
+    "🏴󠁧󠁢󠁳󠁣󠁴󠁿  Escocia":            "escocia_25",
+    "🇵🇹  Portugal":              "portugal_25",
+    "🏴󠁧󠁢󠁥󠁮󠁧󠁿  Championship":       "championship_25",
 }
 
 # ─── SELECTOR DE LIGA ──────────────────────────────────────────────────────────
@@ -255,7 +255,7 @@ liga_nombre = st.selectbox("Liga", list(LIGAS_DISPLAY.keys()), label_visibility=
 liga_key = LIGAS_DISPLAY[liga_nombre]
 
 # Filtrar equipos de la liga seleccionada
-equipos_liga = df[df["Liga"].str.startswith(liga_key)]["HomeTeam"].unique().tolist()
+equipos_liga = df[df["Liga"] == liga_key]["HomeTeam"].unique().tolist()
 equipos = sorted(set(equipos_liga))
 
 st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
