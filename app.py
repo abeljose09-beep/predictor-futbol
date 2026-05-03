@@ -311,14 +311,42 @@ if predecir:
 
     # Preparar features y predecir
     try:
-        # Estadísticas históricas del dataset
+        # Estadísticas históricas del dataset (últimos 10 partidos)
+        N = 10
+        partidos_local_home = df[df["HomeTeam"] == equipo_local].tail(N)
+        partidos_local_away = df[df["AwayTeam"] == equipo_local].tail(N)
+        partidos_visit_home = df[df["HomeTeam"] == equipo_visitante].tail(N)
+        partidos_visit_away = df[df["AwayTeam"] == equipo_visitante].tail(N)
+
+        # Goles a favor local (sumando como local y visitante)
+        gf_h = list(partidos_local_home["FTHG"]) + list(partidos_local_away["FTAG"])
+        ga_h = list(partidos_local_home["FTAG"]) + list(partidos_local_away["FTHG"])
+        gf_a = list(partidos_visit_home["FTHG"]) + list(partidos_visit_away["FTAG"])
+        ga_a = list(partidos_visit_home["FTAG"]) + list(partidos_visit_away["FTHG"])
+
+        goles_favor_local  = np.mean(gf_h[-N:]) if gf_h else 1.3
+        goles_contra_local = np.mean(ga_h[-N:]) if ga_h else 1.1
+        goles_favor_visit  = np.mean(gf_a[-N:]) if gf_a else 1.1
+        goles_contra_visit = np.mean(ga_a[-N:]) if ga_a else 1.3
+
+        # Puntos por partido (últimos N)
+        def pts(ftr_series, lado):
+            return [3 if f==lado else (1 if f=='D' else 0) for f in ftr_series]
+
+        pts_h = pts(partidos_local_home["FTR"], "H") + pts(partidos_local_away["FTR"], "A")
+        pts_a = pts(partidos_visit_home["FTR"], "H") + pts(partidos_visit_away["FTR"], "A")
+        hpts = np.mean(pts_h[-N:]) if pts_h else 1.0
+        apts = np.mean(pts_a[-N:]) if pts_a else 1.0
+
+        # Tiros (últimos partidos como local/visitante)
+        hs_val  = partidos_local_home["HS"].mean()  if len(partidos_local_home) > 0 else 12.0
+        as_val  = partidos_visit_away["AS"].mean()  if len(partidos_visit_away) > 0 else 11.0
+        hst_val = partidos_local_home["HST"].mean() if len(partidos_local_home) > 0 else 4.5
+        ast_val = partidos_visit_away["AST"].mean() if len(partidos_visit_away) > 0 else 4.0
+
+        # Todos los partidos para referencia (para stats display)
         partidos_local = df[df["HomeTeam"] == equipo_local]
         partidos_visita = df[df["AwayTeam"] == equipo_visitante]
-
-        goles_favor_local = partidos_local["FTHG"].mean() if len(partidos_local) > 0 else 1.3
-        goles_contra_local = partidos_local["FTAG"].mean() if len(partidos_local) > 0 else 1.1
-        goles_favor_visit = partidos_visita["FTAG"].mean() if len(partidos_visita) > 0 else 1.1
-        goles_contra_visit = partidos_visita["FTHG"].mean() if len(partidos_visita) > 0 else 1.4
 
         # H2H
         h2h = df[
@@ -336,10 +364,12 @@ if predecir:
         empates_h2h = len(h2h[h2h["FTR"] == "D"])
         total_h2h = len(h2h)
 
+        # Features exactas del modelo entrenado
         features = np.array([[
             goles_favor_local, goles_contra_local,
             goles_favor_visit, goles_contra_visit,
-            jornada, racha_local, racha_visit
+            hpts, apts,
+            hs_val, as_val, hst_val, ast_val
         ]])
 
         probs = modelo.predict_proba(features)[0]
