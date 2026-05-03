@@ -591,35 +591,38 @@ if predecir:
                 """, unsafe_allow_html=True)
 
     with tab3:
-        st.markdown(f"""
-        <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px;">
-            <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; 
-                        color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
-                Estadísticas del modelo
-            </div>
-        """, unsafe_allow_html=True)
+    stats_modelo = {
+        "Partidos analizados (local)": len(partidos_local),
+        "Partidos analizados (visitante)": len(partidos_visita),
+        "Total partidos en dataset": len(df),
+        "Jornada seleccionada": jornada,
+        "Forma local": racha_local,
+        "Forma visitante": racha_visit,
+    }
 
-        stats_modelo = {
-            "Partidos analizados (local)": len(partidos_local),
-            "Partidos analizados (visitante)": len(partidos_visita),
-            "Total partidos en dataset": len(df),
-            "Jornada seleccionada": jornada,
-            "Forma local": racha_local,
-            "Forma visitante": racha_visit,
-        }
-        for k, v in stats_modelo.items():
-            st.markdown(f"""
-            <div style="display:flex; justify-content:space-between; padding:10px 0; 
-                        border-bottom:1px solid #1E2A35;">
-                <span style="font-family:'DM Sans',sans-serif; font-size:14px; color:#4A6075;">
-                    {k}
-                </span>
-                <span style="font-family:'Space Mono',monospace; font-size:14px; color:#E8EDF2;">
-                    {v}
-                </span>
-            </div>
-            """, unsafe_allow_html=True)
-        st.markdown("</div>", unsafe_allow_html=True)
+    filas_html = ""
+    for k, v in stats_modelo.items():
+        filas_html += f"""
+        <div style="display:flex; justify-content:space-between; padding:10px 0; 
+                    border-bottom:1px solid #1E2A35;">
+            <span style="font-family:'DM Sans',sans-serif; font-size:14px; color:#4A6075;">
+                {k}
+            </span>
+            <span style="font-family:'Space Mono',monospace; font-size:14px; color:#E8EDF2;">
+                {v}
+            </span>
+        </div>
+        """
+
+    st.markdown(f"""
+    <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px;">
+        <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; 
+                    color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
+            Estadísticas del modelo
+        </div>
+        {filas_html}
+    </div>
+    """, unsafe_allow_html=True)
 
     # ── VEREDICTO FINAL ──
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
