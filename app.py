@@ -199,6 +199,12 @@ def get_escudo_b64(nombre):
         return None
     return None
 
+def escudo_html(nombre, size=64):
+    data_url = get_escudo_b64(nombre)
+    if data_url:
+        return f'<img src="{data_url}" width="{size}" height="{size}" style="object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.5));">'
+    else:
+        return f'<div style="width:{size}px;height:{size}px;display:flex;align-items:center;justify-content:center;font-size:{size//2}px;">⚽</div>'
 # ─── HEADER ────────────────────────────────────────────────────────────────────
 st.markdown("""
 <div style="text-align:center; padding: 40px 0 32px;">
