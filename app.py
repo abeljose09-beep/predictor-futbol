@@ -178,25 +178,26 @@ def barra_gradiente(prob, color, label):
     """
 @st.cache_data
 def get_escudo_b64(nombre):
-    url = get_escudo(nombre)
-    if not url:
+    ruta = get_escudo(nombre)
+    if not ruta:
         return None
     try:
-        r = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        # Ruta local
+        if not ruta.startswith("http"):
+            if os.path.exists(ruta):
+                with open(ruta, "rb") as f:
+                    b64 = base64.b64encode(f.read()).decode()
+                return f"data:image/png;base64,{b64}"
+            return None
+        # URL remota (fallback Wikipedia)
+        r = requests.get(ruta, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
         if r.status_code == 200:
             b64 = base64.b64encode(r.content).decode()
-            mime = "image/svg+xml" if url.endswith(".svg") else "image/png"
+            mime = "image/svg+xml" if ruta.endswith(".svg") else "image/png"
             return f"data:{mime};base64,{b64}"
     except:
         return None
     return None
-
-def escudo_html(nombre, size=64):
-    data_url = get_escudo_b64(nombre)
-    if data_url:
-        return f'<img src="{data_url}" width="{size}" height="{size}" style="object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.5));">'
-    else:
-        return f'<div style="width:{size}px;height:{size}px;display:flex;align-items:center;justify-content:center;font-size:{size//2}px;">⚽</div>'
 
 # ─── HEADER ────────────────────────────────────────────────────────────────────
 st.markdown("""
