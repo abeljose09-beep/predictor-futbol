@@ -208,8 +208,34 @@ except Exception as e:
     st.error(f"Error cargando modelo/datos: {e}")
     st.stop()
 
-equipos = sorted(df["HomeTeam"].unique().tolist())
+LIGAS_DISPLAY = {
+    "🏴󠁧󠁢󠁥󠁮󠁧󠁿  Premier League": "premier",
+    "🇪🇸  La Liga":        "laliga",
+    "🇮🇹  Serie A":         "seriea",
+    "🇩🇪  Bundesliga":      "bundesliga",
+    "🇫🇷  Ligue 1":         "ligue1",
+    "🇳🇱  Eredivisie":      "eredivisie",
+    "🏴󠁧󠁢󠁳󠁣󠁴󠁿  Escocia":        "escocia",
+    "🇵🇹  Portugal":        "portugal",
+    "🏴󠁧󠁢󠁥󠁮󠁧󠁿  Championship":   "championship",
+}
 
+# ─── SELECTOR DE LIGA ──────────────────────────────────────────────────────────
+st.markdown("""
+<div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px;
+            color:#4A6075; text-transform:uppercase; margin-bottom:8px; text-align:center;">
+    Selecciona la liga
+</div>
+""", unsafe_allow_html=True)
+
+liga_nombre = st.selectbox("Liga", list(LIGAS_DISPLAY.keys()), label_visibility="collapsed")
+liga_key = LIGAS_DISPLAY[liga_nombre]
+
+# Filtrar equipos de la liga seleccionada
+equipos_liga = df[df["Liga"].str.startswith(liga_key)]["HomeTeam"].unique().tolist()
+equipos = sorted(set(equipos_liga))
+
+st.markdown("<div style='height:8px'></div>", unsafe_allow_html=True)
 
 # ─── PANEL DE SELECCIÓN ────────────────────────────────────────────────────────
 col_left, col_center, col_right = st.columns([5, 2, 5])
