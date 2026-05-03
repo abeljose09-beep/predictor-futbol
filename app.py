@@ -577,29 +577,23 @@ if predecir:
             "Forma visitante": racha_visit,
         }
 
-        filas_html = ""
-        for k, v in stats_modelo.items():
-            filas_html += f"""
-            <div style="display:flex; justify-content:space-between; padding:10px 0; 
-                        border-bottom:1px solid #1E2A35;">
-                <span style="font-family:'DM Sans',sans-serif; font-size:14px; color:#4A6075;">
-                    {k}
-                </span>
-                <span style="font-family:'Space Mono',monospace; font-size:14px; color:#E8EDF2;">
-                    {v}
-                </span>
-            </div>
-            """
+        filas = "".join([
+            "<div style='display:flex;justify-content:space-between;padding:10px 0;border-bottom:1px solid #1E2A35;'>"
+            f"<span style='font-family:DM Sans,sans-serif;font-size:14px;color:#4A6075;'>{k}</span>"
+            f"<span style='font-family:Space Mono,monospace;font-size:14px;color:#E8EDF2;'>{v}</span>"
+            "</div>"
+            for k, v in stats_modelo.items()
+        ])
 
-        st.markdown(f"""
-        <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px;">
-            <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px; 
-                        color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
-                Estadísticas del modelo
-            </div>
-            """ + filas_html + """
-        </div>
-        """, unsafe_allow_html=True)
+        html_tab3 = (
+            "<div style='background:#0D1117;border:1px solid #1E2A35;border-radius:16px;padding:24px 28px;'>"
+            "<div style='font-family:Space Mono,monospace;font-size:10px;letter-spacing:3px;"
+            "color:#4A6075;text-transform:uppercase;margin-bottom:20px;'>Estadísticas del modelo</div>"
+            + filas +
+            "</div>"
+        )
+
+        st.markdown(html_tab3, unsafe_allow_html=True)
 
     # ── VEREDICTO FINAL ──
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
