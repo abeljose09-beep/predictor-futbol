@@ -4,6 +4,9 @@ import numpy as np
 import joblib
 import os
 from escudos import get_escudo
+import requests
+from io import BytesIO
+import base64
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -173,14 +176,27 @@ def barra_gradiente(prob, color, label):
         </div>
     </div>
     """
+@st.cache_data
+def get_escudo_b64(nombre):
+    url = get_escudo(nombre)
+    if not url:
+        return None
+    try:
+        r = requests.get(url, timeout=5, headers={"User-Agent": "Mozilla/5.0"})
+        if r.status_code == 200:
+            b64 = base64.b64encode(r.content).decode()
+            mime = "image/svg+xml" if url.endswith(".svg") else "image/png"
+            return f"data:{mime};base64,{b64}"
+    except:
+        return None
+    return None
 
 def escudo_html(nombre, size=64):
-    url = get_escudo(nombre)
-    if url:
-        return f'<img src="{url}" width="{size}" height="{size}" style="object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.5));" onerror="this.style.display=\'none\'">'
+    data_url = get_escudo_b64(nombre)
+    if data_url:
+        return f'<img src="{data_url}" width="{size}" height="{size}" style="object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.5));">'
     else:
         return f'<div style="width:{size}px;height:{size}px;display:flex;align-items:center;justify-content:center;font-size:{size//2}px;">⚽</div>'
-
 
 # ─── HEADER ────────────────────────────────────────────────────────────────────
 st.markdown("""
