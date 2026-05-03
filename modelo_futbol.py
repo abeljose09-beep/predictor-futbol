@@ -1,4 +1,5 @@
 import pandas as pd
+import os
 import numpy as np
 import json, sys
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
@@ -50,13 +51,9 @@ def calcular_forma(df, equipo, fecha, n=5):
 
 
 def construir_features(df):
-    print("⚙️  Calculando indicadores de cada partido...")
     filas = []
 
     for idx, partido in df.iterrows():
-        if idx % 200 == 0:
-            print(f"  Procesando partido {idx}/{len(df)}...")
-
         local  = partido['HomeTeam']
         visita = partido['AwayTeam']
         fecha  = partido['Date']
@@ -111,7 +108,8 @@ def construir_features(df):
 
 
 def entrenar_modelos(local, visita):
-    df = pd.read_csv('datos/partidos.csv', parse_dates=['Date'])
+    BASE_DIR = os.path.dirname(os.path.abspath(__file__))
+    df = pd.read_csv(os.path.join(BASE_DIR, 'datos', 'partidos.csv'), parse_dates=['Date'])
 
     # Detectar liga automáticamente según los equipos
     liga_local  = obtener_liga(local)
