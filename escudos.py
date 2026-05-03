@@ -234,7 +234,7 @@ ESCUDOS_CACHE = {
     "Charlton":         "https://www.thesportsdb.com/images/media/team/badge/sqsrrs1421791350.png",
     "Wrexham":          "https://www.thesportsdb.com/images/media/team/badge/sqsvst1421791622.png",
 }
-
+ESCUDOS_CACHE = {k: v + "/preview" for k, v in ESCUDOS_CACHE.items()}
 
 @lru_cache(maxsize=256)
 def buscar_escudo_api(nombre_equipo: str) -> str:
