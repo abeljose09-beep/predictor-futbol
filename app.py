@@ -36,6 +36,63 @@ TODAS_SELECCIONES = sorted(list(set(
     sel for grupo in MUNDIAL_2026_GRUPOS.values() for sel in grupo
 )))
 
+# Carpeta de banderas del Mundial 2026
+BANDERAS_DIR = os.path.join(os.path.dirname(__file__), "escudos", "mundial_2026_banderas")
+
+# Mapeo nombre en español → archivo PNG
+BANDERAS_ARCHIVOS = {
+    "Argelia":        "Algeria.png",
+    "Argentina":      "Argentina.png",
+    "Australia":      "Australia.png",
+    "Austria":        "Austria.png",
+    "Bélgica":        "Belgium.png",
+    "Brasil":         "Brazil.png",
+    "Canadá":         "Canada.png",
+    "Colombia":       "Colombia.png",
+    "Corea del Sur":  "South_Korea.png",
+    "Croacia":        "Croatia.png",
+    "Ecuador":        "Ecuador.png",
+    "España":         "Spain.png",
+    "Estados Unidos": "United_States.png",
+    "Francia":        "France.png",
+    "Ghana":          "Ghana.png",
+    "Alemania":       "Germany.png",
+    "Inglaterra":     "England.png",
+    "Irán":           "Iran.png",
+    "Japón":          "Japan.png",
+    "Marruecos":      "Morocco.png",
+    "México":         "Mexico.png",
+    "Países Bajos":   "Netherlands.png",
+    "Panamá":         "Panama.png",
+    "Portugal":       "Portugal.png",
+    "Arabia Saudita": "Saudi_Arabia.png",
+    "Escocia":        "Scotland.png",
+    "Senegal":        "Senegal.png",
+    "Sudáfrica":      "South_Africa.png",
+    "Suiza":          "Switzerland.png",
+    "Turquía":        "Turkey.png",
+    "Uruguay":        "Uruguay.png",
+    "Nueva Zelanda":  "New_Zealand.png",
+    # Sin archivo local → fallback emoji
+    "Chile":          None,
+    "Ucrania":        None,
+    "Nigeria":        None,
+    "Camerún":        None,
+    "Tailandia":      None,
+    "Polonia":        None,
+    "Perú":           None,
+    "Italia":         None,
+    "Serbia":         None,
+    "Jamaica":        None,
+    "Venezuela":      None,
+    "Rumania":        None,
+    "Honduras":       None,
+    "Togo":           None,
+    "Kenia":          None,
+    "Grecia":         None,
+}
+
+# Emojis de fallback para las que no tienen archivo
 EMOJIS_SELECCIONES = {
     "México": "🇲🇽", "Ecuador": "🇪🇨", "Alemania": "🇩🇪", "Japón": "🇯🇵",
     "Argentina": "🇦🇷", "Chile": "🇨🇱", "Marruecos": "🇲🇦", "Ucrania": "🇺🇦",
@@ -236,7 +293,30 @@ def escudo_html(nombre, size=64):
         return f'<img src="{data_url}" width="{size}" height="{size}" style="object-fit:contain; filter:drop-shadow(0 4px 12px rgba(0,0,0,0.5));">'
     return f'<div style="width:{size}px;height:{size}px;display:flex;align-items:center;justify-content:center;font-size:{size//2}px;">⚽</div>'
 
+@st.cache_data
+def get_bandera_mundial_b64(seleccion):
+    """Carga la bandera local del Mundial 2026. Retorna data URL o None."""
+    archivo = BANDERAS_ARCHIVOS.get(seleccion)
+    if not archivo:
+        return None
+    ruta = os.path.join(BANDERAS_DIR, archivo)
+    if not os.path.exists(ruta):
+        return None
+    try:
+        with open(ruta, "rb") as f:
+            b64 = base64.b64encode(f.read()).decode()
+        return f"data:image/png;base64,{b64}"
+    except:
+        return None
+
 def bandera_html(seleccion, size=48):
+    """Imagen local si existe, emoji de fallback si no."""
+    data_url = get_bandera_mundial_b64(seleccion)
+    if data_url:
+        return (
+            f'<img src="{data_url}" width="{size}" height="{size}" '
+            f'style="object-fit:contain; filter:drop-shadow(0 2px 12px rgba(0,0,0,0.5));">'
+        )
     emoji = EMOJIS_SELECCIONES.get(seleccion, "🌍")
     return f'<div style="font-size:{size}px; line-height:1; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4));">{emoji}</div>'
 
@@ -836,10 +916,9 @@ else:
             </div>
             """, unsafe_allow_html=True)
             sel_local = st.selectbox("Selección Local", sels_disponibles, key="m_local", label_visibility="collapsed")
-            emoji_l = EMOJIS_SELECCIONES.get(sel_local, "🌍")
             st.markdown(f"""
             <div style="text-align:center; margin:16px 0;">
-                <div style="font-size:80px; filter:drop-shadow(0 4px 16px rgba(0,0,0,0.6));">{emoji_l}</div>
+                {bandera_html(sel_local, 88)}
             </div>
             <div style="text-align:center;">
                 <span style="font-family:'Bebas Neue',sans-serif; font-size:24px;
@@ -867,10 +946,9 @@ else:
             """, unsafe_allow_html=True)
             idx_default = 1 if len(sels_disponibles) > 1 else 0
             sel_visit = st.selectbox("Selección Visitante", sels_disponibles, index=idx_default, key="m_visit", label_visibility="collapsed")
-            emoji_r = EMOJIS_SELECCIONES.get(sel_visit, "🌍")
             st.markdown(f"""
             <div style="text-align:center; margin:16px 0;">
-                <div style="font-size:80px; filter:drop-shadow(0 4px 16px rgba(0,0,0,0.6));">{emoji_r}</div>
+                {bandera_html(sel_visit, 88)}
             </div>
             <div style="text-align:center;">
                 <span style="font-family:'Bebas Neue',sans-serif; font-size:24px;
@@ -961,7 +1039,7 @@ else:
                             padding:28px 32px; margin-bottom:24px;">
                     <div style="display:flex; align-items:center; justify-content:space-between; gap:16px;">
                         <div style="display:flex; flex-direction:column; align-items:center; gap:12px; flex:1;">
-                            <div style="font-size:64px;">{EMOJIS_SELECCIONES.get(sel_local,'🌍')}</div>
+                            {bandera_html(sel_local, 72)}
                             <span style="font-family:'Bebas Neue',sans-serif; font-size:20px;
                                          color:#E8EDF2; letter-spacing:2px; text-align:center;">
                                 {sel_local}
@@ -1000,7 +1078,7 @@ else:
                                         color:#6B5C30; letter-spacing:2px;">GOLES ESPERADOS</div>
                         </div>
                         <div style="display:flex; flex-direction:column; align-items:center; gap:12px; flex:1;">
-                            <div style="font-size:64px;">{EMOJIS_SELECCIONES.get(sel_visit,'🌍')}</div>
+                            {bandera_html(sel_visit, 72)}
                             <span style="font-family:'Bebas Neue',sans-serif; font-size:20px;
                                          color:#E8EDF2; letter-spacing:2px; text-align:center;">
                                 {sel_visit}
@@ -1130,7 +1208,7 @@ else:
             sels_html = "".join([
                 f"""<div style="display:flex; align-items:center; gap:10px;
                                 padding:8px 0; border-bottom:{'1px solid #2A2410' if j < len(selecciones)-1 else 'none'};">
-                        <span style="font-size:20px;">{EMOJIS_SELECCIONES.get(s,'🌍')}</span>
+                        {bandera_html(s, 28)}
                         <span style="font-family:'DM Sans',sans-serif; font-size:14px;
                                      color:#E8EDF2; font-weight:500;">{s}</span>
                     </div>"""
