@@ -1097,19 +1097,28 @@ else:
                 """, unsafe_allow_html=True)
 
                 # Barras de probabilidad con colores Mundial
-                barras_html = (
-                    barra_gradiente(prob_local_m, "#C9A84C", f"Victoria {sel_local[:14]}") +
-                    barra_gradiente(prob_empate_m, "#2A398D", "Empate") +
-                    barra_gradiente(prob_visit_m, "#E61D25", f"Victoria {sel_visit[:14]}")
+                def barra_m(prob, color, label):
+                    pct = int(prob * 100)
+                    return (
+                        f"<div style='margin-bottom:12px;'>"
+                        f"<div style='display:flex;justify-content:space-between;margin-bottom:6px;'>"
+                        f"<span style='font-family:Space Mono,monospace;font-size:11px;letter-spacing:1.5px;text-transform:uppercase;color:#6B5C30;'>{label}</span>"
+                        f"<span style='font-family:Bebas Neue,sans-serif;font-size:22px;color:{color};line-height:1;'>{pct}%</span>"
+                        f"</div>"
+                        f"<div style='height:8px;background:#1E2A35;border-radius:4px;overflow:hidden;'>"
+                        f"<div style='height:100%;width:{pct}%;background:linear-gradient(90deg,{color}99,{color});border-radius:4px;'></div>"
+                        f"</div>"
+                        f"</div>"
+                    )
+                html_barras_m = (
+                    "<div style='background:#0E0F0D;border:1px solid #2A2410;border-radius:16px;padding:24px 28px;'>"
+                    "<div style='font-family:Space Mono,monospace;font-size:10px;letter-spacing:3px;color:#6B5C30;text-transform:uppercase;margin-bottom:20px;'>Distribución de probabilidades</div>"
+                    + barra_m(prob_local_m, "#C9A84C", f"Victoria {sel_local[:14]}")
+                    + barra_m(prob_empate_m, "#2A398D", "Empate")
+                    + barra_m(prob_visit_m, "#E61D25", f"Victoria {sel_visit[:14]}")
+                    + "</div>"
                 )
-                st.markdown(
-                    "<div style='background:#0E0F0D; border:1px solid #2A2410; border-radius:16px; padding:24px 28px;'>"
-                    "<div style='font-family:Space Mono,monospace; font-size:10px; letter-spacing:3px;"
-                    "color:#6B5C30; text-transform:uppercase; margin-bottom:20px;'>Distribución de probabilidades</div>"
-                    + barras_html +
-                    "</div>",
-                    unsafe_allow_html=True
-                )
+                st.markdown(html_barras_m, unsafe_allow_html=True)
 
             with r_tab2:
                 confianza_m = "ALTA" if prob_max_m >= 0.55 else "MEDIA" if prob_max_m >= 0.40 else "BAJA"
