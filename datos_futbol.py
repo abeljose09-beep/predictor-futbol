@@ -65,6 +65,7 @@ LIGAS = {
 # ── Champions, Europa, Mundial (URLs corregidas) ───────────────────────────
 LIGAS_API = {
     # Mundial — repo worldcup.json (URLs verificadas ✅)
+    'mundial_26': 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2026/worldcup.json',
     'mundial_22': 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2022/worldcup.json',
     'mundial_18': 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2018/worldcup.json',
     'mundial_14': 'https://raw.githubusercontent.com/openfootball/worldcup.json/master/2014/worldcup.json',

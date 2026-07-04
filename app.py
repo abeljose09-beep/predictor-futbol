@@ -7,6 +7,8 @@ from escudos import get_escudo
 import requests
 from io import BytesIO
 import base64
+import time
+import random
 
 # ─── CONFIG ────────────────────────────────────────────────────────────────────
 st.set_page_config(
@@ -324,6 +326,435 @@ def bandera_html(seleccion, size=48):
     emoji = EMOJIS_SELECCIONES.get(seleccion, "🌍")
     return f'<div style="font-size:{size}px; line-height:1; filter:drop-shadow(0 2px 8px rgba(0,0,0,0.4));">{emoji}</div>'
 
+def poisson_prob(k, lamb):
+    import math
+    if lamb <= 0:
+        return 1.0 if k == 0 else 0.0
+    return (lamb ** k * math.exp(-lamb)) / math.factorial(k)
+
+def obtener_marcadores_probables(goles_l_esp, goles_v_esp, top_n=5):
+    marcadores = []
+    for h in range(6):
+        for a in range(6):
+            p_h = poisson_prob(h, goles_l_esp)
+            p_a = poisson_prob(a, goles_v_esp)
+            prob = p_h * p_a
+            marcadores.append(((h, a), prob))
+    marcadores = sorted(marcadores, key=lambda x: x[1], reverse=True)
+    return marcadores[:top_n]
+
+def simular_partido_en_vivo(local, visita, goles_l_esp, goles_v_esp, color_l, color_v, mundial=False, es_eliminatoria=False):
+    # Definir imágenes
+    img_l = bandera_html(local, 32) if mundial else escudo_html(local, 32)
+    img_v = bandera_html(visita, 32) if mundial else escudo_html(visita, 32)
+    img_l_large = bandera_html(local, 48) if mundial else escudo_html(local, 48)
+    img_v_large = bandera_html(visita, 48) if mundial else escudo_html(visita, 48)
+
+    # Generar goles finales para los 90 minutos
+    goles_l = int(np.random.poisson(goles_l_esp))
+    goles_v = int(np.random.poisson(goles_v_esp))
+    
+    eventos = []
+    
+    # Goles reglamentarios
+    for _ in range(goles_l):
+        minuto = random.randint(1, 90)
+        eventos.append({
+            'minuto': minuto,
+            'tipo': 'gol',
+            'equipo': local,
+            'texto': f"⚽ ¡GOL de {local}!",
+        })
+    for _ in range(goles_v):
+        minuto = random.randint(1, 90)
+        eventos.append({
+            'minuto': minuto,
+            'tipo': 'gol',
+            'equipo': visita,
+            'texto': f"⚽ ¡GOL de {visita}!",
+        })
+        
+    # Tarjetas
+    for _ in range(random.randint(0, 3)):
+        minuto = random.randint(1, 90)
+        eventos.append({
+            'minuto': minuto,
+            'tipo': 'tarjeta',
+            'equipo': local,
+            'texto': f"🟨 Tarjeta amarilla para {local}",
+        })
+    for _ in range(random.randint(0, 3)):
+        minuto = random.randint(1, 90)
+        eventos.append({
+            'minuto': minuto,
+            'tipo': 'tarjeta',
+            'equipo': visita,
+            'texto': f"🟨 Tarjeta amarilla para {visita}",
+        })
+        
+    # Cambios
+    for _ in range(random.randint(1, 3)):
+        minuto = random.randint(45, 88)
+        eventos.append({
+            'minuto': minuto,
+            'tipo': 'cambio',
+            'equipo': local,
+            'texto': f"🔁 Cambio en {local}",
+        })
+    for _ in range(random.randint(1, 3)):
+        minuto = random.randint(45, 88)
+        eventos.append({
+            'minuto': minuto,
+            'tipo': 'cambio',
+            'equipo': visita,
+            'texto': f"🔁 Cambio en {visita}",
+        })
+
+    eventos = sorted(eventos, key=lambda x: x['minuto'])
+    
+    score_l = 0
+    score_v = 0
+    
+    progress_bar = st.progress(0)
+    scoreboard_placeholder = st.empty()
+    events_placeholder = st.empty()
+    
+    lista_eventos_mostrar = []
+    
+    # Simulación minutos 1 a 90
+    for minuto in range(1, 91):
+        progress_bar.progress(minuto / 90.0)
+        
+        eventos_minuto = [e for e in eventos if e['minuto'] == minuto]
+        for ev in eventos_minuto:
+            if ev['tipo'] == 'gol':
+                if ev['equipo'] == local:
+                    score_l += 1
+                else:
+                    score_v += 1
+            lista_eventos_mostrar.insert(0, f"⏱️ **Min {minuto}**: {ev['texto']}")
+            
+        acento = "#C9A84C" if mundial else "#2ECC71"
+        tablero_html = f"""
+        <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:20px; text-align:center; margin-bottom:16px;">
+            <div style="font-family:'Space Mono',monospace; font-size:12px; color:#4A6075; letter-spacing:2px; margin-bottom:8px;">SIMULACIÓN EN VIVO</div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:16px;">
+                <div style="display:flex; align-items:center; gap:8px;">
+                    {img_l}
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{local}</span>
+                </div>
+                <div style="background:#1E2A35; border-radius:12px; padding:8px 24px; display:flex; align-items:center; gap:12px; margin:0 12px;">
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:{acento};">{score_l}</span>
+                    <span style="font-family:'Space Mono',monospace; font-size:20px; color:#4A6075;">-</span>
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:{acento};">{score_v}</span>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{visita}</span>
+                    {img_v}
+                </div>
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:{acento}; margin-top:12px; letter-spacing:1px;">{minuto}'</div>
+        </div>
+        """
+        scoreboard_placeholder.markdown(tablero_html, unsafe_allow_html=True)
+        
+        eventos_html = "".join([f"<div style='font-family:DM Sans,sans-serif; font-size:14px; padding:8px; border-bottom:1px solid #1E2A35;'>{ev}</div>" for ev in lista_eventos_mostrar[:5]])
+        events_placeholder.markdown(f"<div style='background:#0D1117; border:1px solid #1E2A35; border-radius:12px; padding:16px;'><div style='font-family:Space Mono,monospace; font-size:11px; color:#4A6075; margin-bottom:8px;'>Sucesos del partido</div>{eventos_html}</div>", unsafe_allow_html=True)
+        
+        time.sleep(0.02)
+        
+    # --- PRÓRROGA (En caso de empate en fases eliminatorias) ---
+    if es_eliminatoria and score_l == score_v:
+        lista_eventos_mostrar.insert(0, "⏱️ **Min 90**: ¡Final de los 90 minutos! Empate en el marcador. **¡Habrá Prórroga (Tiempo Extra)!**")
+        events_placeholder.markdown(f"<div style='background:#0D1117; border:1px solid #1E2A35; border-radius:12px; padding:16px;'><div style='font-family:Space Mono,monospace; font-size:11px; color:#4A6075; margin-bottom:8px;'>Sucesos del partido</div>" + "".join([f"<div style='font-family:DM Sans,sans-serif; font-size:14px; padding:8px; border-bottom:1px solid #1E2A35;'>{ev}</div>" for ev in lista_eventos_mostrar[:5]]) + "</div>", unsafe_allow_html=True)
+        
+        # Generar goles de prórroga
+        goles_l_et = int(np.random.poisson(0.12))
+        goles_v_et = int(np.random.poisson(0.10))
+        
+        eventos_et = []
+        for _ in range(goles_l_et):
+            minuto = random.randint(91, 120)
+            eventos_et.append({
+                'minuto': minuto,
+                'tipo': 'gol',
+                'equipo': local,
+                'texto': f"⚽ ¡GOL de {local} en la prórroga!",
+            })
+        for _ in range(goles_v_et):
+            minuto = random.randint(91, 120)
+            eventos_et.append({
+                'minuto': minuto,
+                'tipo': 'gol',
+                'equipo': visita,
+                'texto': f"⚽ ¡GOL de {visita} en la prórroga!",
+            })
+            
+        for _ in range(random.randint(0, 1)):
+            minuto = random.randint(91, 120)
+            eventos_et.append({
+                'minuto': minuto,
+                'tipo': 'tarjeta',
+                'equipo': local,
+                'texto': f"🟨 Tarjeta amarilla para {local} en la prórroga",
+            })
+        for _ in range(random.randint(0, 1)):
+            minuto = random.randint(91, 120)
+            eventos_et.append({
+                'minuto': minuto,
+                'tipo': 'tarjeta',
+                'equipo': visita,
+                'texto': f"🟨 Tarjeta amarilla para {visita} en la prórroga",
+            })
+            
+        eventos_et = sorted(eventos_et, key=lambda x: x['minuto'])
+        
+        time.sleep(1.8)
+        
+        # Simulación minutos 91 a 120
+        for minuto in range(91, 121):
+            progress_bar.progress((minuto - 90) / 30.0)
+            
+            eventos_minuto = [e for e in eventos_et if e['minuto'] == minuto]
+            for ev in eventos_minuto:
+                if ev['tipo'] == 'gol':
+                    if ev['equipo'] == local:
+                        score_l += 1
+                    else:
+                        score_v += 1
+                lista_eventos_mostrar.insert(0, f"⏱️ **Min {minuto}**: {ev['texto']}")
+                
+            acento = "#C9A84C" if mundial else "#2ECC71"
+            tablero_html = f"""
+            <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:20px; text-align:center; margin-bottom:16px;">
+                <div style="font-family:'Space Mono',monospace; font-size:12px; color:#4A6075; letter-spacing:2px; margin-bottom:8px;">SIMULACIÓN EN VIVO (PRÓRROGA)</div>
+                <div style="display:flex; justify-content:center; align-items:center; gap:16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        {img_l}
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{local}</span>
+                    </div>
+                    <div style="background:#1E2A35; border-radius:12px; padding:8px 24px; display:flex; align-items:center; gap:12px; margin:0 12px;">
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:{acento};">{score_l}</span>
+                        <span style="font-family:'Space Mono',monospace; font-size:20px; color:#4A6075;">-</span>
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:{acento};">{score_v}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{visita}</span>
+                        {img_v}
+                    </div>
+                </div>
+                <div style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:{acento}; margin-top:12px; letter-spacing:1px;">{minuto}' (T.E.)</div>
+            </div>
+            """
+            scoreboard_placeholder.markdown(tablero_html, unsafe_allow_html=True)
+            eventos_html = "".join([f"<div style='font-family:DM Sans,sans-serif; font-size:14px; padding:8px; border-bottom:1px solid #1E2A35;'>{ev}</div>" for ev in lista_eventos_mostrar[:5]])
+            events_placeholder.markdown(f"<div style='background:#0D1117; border:1px solid #1E2A35; border-radius:12px; padding:16px;'><div style='font-family:Space Mono,monospace; font-size:11px; color:#4A6075; margin-bottom:8px;'>Sucesos del partido</div>{eventos_html}</div>", unsafe_allow_html=True)
+            
+            time.sleep(0.03)
+
+    # --- TANDA DE PENALES (Si el empate persiste después de la prórroga) ---
+    if es_eliminatoria and score_l == score_v:
+        lista_eventos_mostrar.insert(0, "⏱️ **Min 120**: ¡Final de la Prórroga! Empate persistente. **¡Se decidirá en TANDA DE PENALES!**")
+        events_placeholder.markdown(f"<div style='background:#0D1117; border:1px solid #1E2A35; border-radius:12px; padding:16px;'><div style='font-family:Space Mono,monospace; font-size:11px; color:#4A6075; margin-bottom:8px;'>Sucesos del partido</div>" + "".join([f"<div style='font-family:DM Sans,sans-serif; font-size:14px; padding:8px; border-bottom:1px solid #1E2A35;'>{ev}</div>" for ev in lista_eventos_mostrar[:5]]) + "</div>", unsafe_allow_html=True)
+        
+        time.sleep(2.0)
+        
+        pen_l_shots = []
+        pen_v_shots = []
+        goles_pen_l = 0
+        goles_pen_v = 0
+        
+        round_idx = 0
+        ganador = None
+        
+        while ganador is None:
+            round_idx += 1
+            
+            # --- Turno Local ---
+            exito_l = random.random() < 0.77
+            if exito_l:
+                pen_l_shots.append('⚽')
+                goles_pen_l += 1
+                lista_eventos_mostrar.insert(0, f"🎯 **Penal {round_idx} {local}**: ¡GOL! ({goles_pen_l} - {goles_pen_v})")
+            else:
+                pen_l_shots.append('❌')
+                lista_eventos_mostrar.insert(0, f"🎯 **Penal {round_idx} {local}**: ¡FALLÓ/ATAJÓ! ({goles_pen_l} - {goles_pen_v})")
+            
+            # Check if local won during first 5 rounds
+            if round_idx <= 5:
+                rem_v = 5 - len(pen_v_shots)
+                if goles_pen_l > goles_pen_v + rem_v:
+                    ganador = local
+            
+            # Update scoreboard
+            acento = "#C9A84C" if mundial else "#2ECC71"
+            tanda_html = f"""
+            <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:20px; text-align:center; margin-bottom:16px;">
+                <div style="font-family:'Space Mono',monospace; font-size:12px; color:#4A6075; letter-spacing:2px; margin-bottom:8px;">TANDA DE PENALES</div>
+                <div style="display:flex; justify-content:center; align-items:center; gap:16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        {img_l}
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{local}</span>
+                    </div>
+                    <div style="background:#1E2A35; border-radius:12px; padding:8px 24px; display:flex; align-items:center; gap:12px; margin:0 12px;">
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:{acento};">{goles_pen_l}</span>
+                        <span style="font-family:'Space Mono',monospace; font-size:20px; color:#4A6075;">-</span>
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:{acento};">{goles_pen_v}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{visita}</span>
+                        {img_v}
+                    </div>
+                </div>
+                <div style="margin-top:16px; font-family:'Space Mono',monospace; font-size:12px; color:#E8EDF2; text-align:center;">
+                    <div>{local}: {" ".join(pen_l_shots)}</div>
+                    <div style="margin-top:4px;">{visita}: {" ".join(pen_v_shots)}</div>
+                </div>
+            </div>
+            """
+            scoreboard_placeholder.markdown(tanda_html, unsafe_allow_html=True)
+            eventos_html = "".join([f"<div style='font-family:DM Sans,sans-serif; font-size:14px; padding:8px; border-bottom:1px solid #1E2A35;'>{ev}</div>" for ev in lista_eventos_mostrar[:5]])
+            events_placeholder.markdown(f"<div style='background:#0D1117; border:1px solid #1E2A35; border-radius:12px; padding:16px;'><div style='font-family:Space Mono,monospace; font-size:11px; color:#4A6075; margin-bottom:8px;'>Sucesos del partido</div>{eventos_html}</div>", unsafe_allow_html=True)
+            time.sleep(1.0)
+            
+            if ganador is not None:
+                break
+                
+            # --- Turno Visitante ---
+            exito_v = random.random() < 0.74
+            if exito_v:
+                pen_v_shots.append('⚽')
+                goles_pen_v += 1
+                lista_eventos_mostrar.insert(0, f"🎯 **Penal {round_idx} {visita}**: ¡GOL! ({goles_pen_l} - {goles_pen_v})")
+            else:
+                pen_v_shots.append('❌')
+                lista_eventos_mostrar.insert(0, f"🎯 **Penal {round_idx} {visita}**: ¡FALLÓ/ATAJÓ! ({goles_pen_l} - {goles_pen_v})")
+                
+            # Check if visitor won during first 5 rounds
+            if round_idx <= 5:
+                rem_l = 5 - len(pen_l_shots)
+                if goles_pen_v > goles_pen_l + rem_l:
+                    ganador = visita
+                elif goles_pen_l > goles_pen_v + (5 - len(pen_v_shots)):
+                    ganador = local
+            else:
+                # Muerte súbita a partir de la ronda 6
+                if goles_pen_l > goles_pen_v:
+                    ganador = local
+                elif goles_pen_v > goles_pen_l:
+                    ganador = visita
+            
+            # Update scoreboard
+            acento = "#C9A84C" if mundial else "#2ECC71"
+            tanda_html = f"""
+            <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:20px; text-align:center; margin-bottom:16px;">
+                <div style="font-family:'Space Mono',monospace; font-size:12px; color:#4A6075; letter-spacing:2px; margin-bottom:8px;">TANDA DE PENALES</div>
+                <div style="display:flex; justify-content:center; align-items:center; gap:16px;">
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        {img_l}
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{local}</span>
+                    </div>
+                    <div style="background:#1E2A35; border-radius:12px; padding:8px 24px; display:flex; align-items:center; gap:12px; margin:0 12px;">
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:{acento};">{goles_pen_l}</span>
+                        <span style="font-family:'Space Mono',monospace; font-size:20px; color:#4A6075;">-</span>
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:42px; color:{acento};">{goles_pen_v}</span>
+                    </div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{visita}</span>
+                        {img_v}
+                    </div>
+                </div>
+                <div style="margin-top:16px; font-family:'Space Mono',monospace; font-size:12px; color:#E8EDF2; text-align:center;">
+                    <div>{local}: {" ".join(pen_l_shots)}</div>
+                    <div style="margin-top:4px;">{visita}: {" ".join(pen_v_shots)}</div>
+                </div>
+            </div>
+            """
+            scoreboard_placeholder.markdown(tanda_html, unsafe_allow_html=True)
+            eventos_html = "".join([f"<div style='font-family:DM Sans,sans-serif; font-size:14px; padding:8px; border-bottom:1px solid #1E2A35;'>{ev}</div>" for ev in lista_eventos_mostrar[:5]])
+            events_placeholder.markdown(f"<div style='background:#0D1117; border:1px solid #1E2A35; border-radius:12px; padding:16px;'><div style='font-family:Space Mono,monospace; font-size:11px; color:#4A6075; margin-bottom:8px;'>Sucesos del partido</div>{eventos_html}</div>", unsafe_allow_html=True)
+            time.sleep(1.0)
+            
+            if ganador is not None:
+                break
+                
+        # Mostrar resultado final con ganador de penales
+        final_html = f"""
+        <div style="background:linear-gradient(135deg, #1A160A 0%, #0E0F0D 100%); border:1px solid {acento}; border-radius:16px; padding:24px; text-align:center; margin-top:16px;">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; color:#E8EDF2; letter-spacing:2px;">🏆 RESULTADO FINAL (PENALES)</div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:24px; margin:16px 0;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    {img_l_large}
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{local}</span>
+                </div>
+                <div style="text-align:center;">
+                    <div style="font-family:'Bebas Neue',sans-serif; font-size:54px; color:{acento}; line-height:1;">{score_l} — {score_v}</div>
+                    <div style="font-family:'Space Mono',monospace; font-size:14px; color:#4A6075; margin-top:4px;">({goles_pen_l}) Penales ({goles_pen_v})</div>
+                </div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    {img_v_large}
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{visita}</span>
+                </div>
+            </div>
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:28px; color:#2ECC71; margin-top:8px; letter-spacing:2px;">🏆 GANADOR: {ganador}</div>
+        </div>
+        """
+        scoreboard_placeholder.markdown(final_html, unsafe_allow_html=True)
+        
+        cronologia_html = "".join([
+            f"<div style='font-family:DM Sans,sans-serif; font-size:14px; padding:10px 0; border-bottom:1px solid #1E2A35;'>"
+            f"{ev}</div>"
+            for ev in reversed(lista_eventos_mostrar)
+        ])
+        events_placeholder.markdown(f"""
+        <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:12px; padding:20px; margin-top:16px;">
+            <div style="font-family:'Space Mono',monospace; font-size:11px; color:#4A6075; letter-spacing:2px; margin-bottom:12px; text-transform:uppercase;">
+                📋 Ficha del Partido (Cronología)
+            </div>
+            <div style="max-height: 250px; overflow-y: auto; padding-right: 8px;">
+                {cronologia_html}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        progress_bar.empty()
+        
+    else:
+        # Final reglamentario normal (o en fase de grupos sin prórroga)
+        final_html = f"""
+        <div style="background:linear-gradient(135deg, #1E2A35 0%, #0D1117 100%); border:1px solid {acento}; border-radius:16px; padding:24px; text-align:center; margin-top:16px;">
+            <div style="font-family:'Bebas Neue',sans-serif; font-size:32px; color:#E8EDF2; letter-spacing:2px;">⚽ RESULTADO FINAL</div>
+            <div style="display:flex; justify-content:center; align-items:center; gap:24px; margin:16px 0;">
+                <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    {img_l_large}
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{local}</span>
+                </div>
+                <div style="font-family:'Bebas Neue',sans-serif; font-size:54px; color:{acento};">{score_l} — {score_v}</div>
+                <div style="display:flex; flex-direction:column; align-items:center; gap:8px;">
+                    {img_v_large}
+                    <span style="font-family:'Bebas Neue',sans-serif; font-size:24px; color:#E8EDF2;">{visita}</span>
+                </div>
+            </div>
+            <div style="font-family:'Space Mono',monospace; font-size:11px; color:#4A6075; letter-spacing:2px;">FIN DEL PARTIDO · 90 MINUTOS SIMULADOS</div>
+        </div>
+        """
+        scoreboard_placeholder.markdown(final_html, unsafe_allow_html=True)
+        
+        cronologia_html = "".join([
+            f"<div style='font-family:DM Sans,sans-serif; font-size:14px; padding:10px 0; border-bottom:1px solid #1E2A35;'>"
+            f"{ev}</div>"
+            for ev in reversed(lista_eventos_mostrar)
+        ])
+        events_placeholder.markdown(f"""
+        <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:12px; padding:20px; margin-top:16px;">
+            <div style="font-family:'Space Mono',monospace; font-size:11px; color:#4A6075; letter-spacing:2px; margin-bottom:12px; text-transform:uppercase;">
+                📋 Ficha del Partido (Cronología)
+            </div>
+            <div style="max-height: 250px; overflow-y: auto; padding-right: 8px;">
+                {cronologia_html}
+            </div>
+        </div>
+        """, unsafe_allow_html=True)
+        progress_bar.empty()
 
 # ─── CARGAR DATOS ──────────────────────────────────────────────────────────────
 try:
@@ -336,6 +767,12 @@ except Exception as e:
 
 # ─── NAV PRINCIPAL ─────────────────────────────────────────────────────────────
 es_mundial = st.session_state.menu_activo == "mundial"
+
+if "pred_resultado_ligas" not in st.session_state:
+    st.session_state.pred_resultado_ligas = None
+
+if "pred_resultado_mundial" not in st.session_state:
+    st.session_state.pred_resultado_mundial = None
 
 # Paletas según modo
 if es_mundial:
@@ -515,6 +952,11 @@ if not es_mundial:
 
     st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
 
+    if st.session_state.pred_resultado_ligas is not None:
+        if (st.session_state.pred_resultado_ligas['equipo_local'] != equipo_local or
+            st.session_state.pred_resultado_ligas['equipo_visitante'] != equipo_visitante):
+            st.session_state.pred_resultado_ligas = None
+
     with st.expander("⚙️  Parámetros avanzados"):
         col_a, col_b, col_c = st.columns(3)
         with col_a:
@@ -609,9 +1051,74 @@ if not es_mundial:
             }[resultado_pred]
             prob_max = max(prob_local, prob_empate, prob_visit)
 
+            confianza = "ALTA" if prob_max >= 0.55 else "MEDIA" if prob_max >= 0.40 else "BAJA"
+            confianza_color = "#2ECC71" if confianza == "ALTA" else "#F39C12" if confianza == "MEDIA" else "#E74C3C"
+            confianza_texto = "alta" if confianza == "ALTA" else "media" if confianza == "MEDIA" else "baja"
+
+            st.session_state.pred_resultado_ligas = {
+                'equipo_local': equipo_local,
+                'equipo_visitante': equipo_visitante,
+                'goles_favor_local': goles_favor_local,
+                'goles_contra_local': goles_contra_local,
+                'goles_favor_visit': goles_favor_visit,
+                'goles_contra_visit': goles_contra_visit,
+                'hpts': hpts,
+                'apts': apts,
+                'hs_val': hs_val,
+                'as_val': as_val,
+                'hst_val': hst_val,
+                'ast_val': ast_val,
+                'ganados_local': ganados_local,
+                'ganados_visit': ganados_visit,
+                'empates_h2h': empates_h2h,
+                'total_h2h': total_h2h,
+                'prob_local': prob_local,
+                'prob_empate': prob_empate,
+                'prob_visit': prob_visit,
+                'prob_max': prob_max,
+                'resultado_texto': resultado_texto,
+                'confianza': confianza,
+                'confianza_texto': confianza_texto,
+                'confianza_color': confianza_color
+            }
+
         except Exception as e:
             st.error(f"Error al predecir: {e}")
             st.stop()
+
+    if st.session_state.pred_resultado_ligas is not None:
+        r = st.session_state.pred_resultado_ligas
+        equipo_local = r['equipo_local']
+        equipo_visitante = r['equipo_visitante']
+        goles_favor_local = r['goles_favor_local']
+        goles_contra_local = r['goles_contra_local']
+        goles_favor_visit = r['goles_favor_visit']
+        goles_contra_visit = r['goles_contra_visit']
+        hpts = r['hpts']
+        apts = r['apts']
+        hs_val = r['hs_val']
+        as_val = r['as_val']
+        hst_val = r['hst_val']
+        ast_val = r['ast_val']
+        ganados_local = r['ganados_local']
+        ganados_visit = r['ganados_visit']
+        empates_h2h = r['empates_h2h']
+        total_h2h = r['total_h2h']
+        prob_local = r['prob_local']
+        prob_empate = r['prob_empate']
+        prob_visit = r['prob_visit']
+        prob_max = r['prob_max']
+        resultado_texto = r['resultado_texto']
+        confianza = r['confianza']
+        confianza_texto = r['confianza_texto']
+        confianza_color = r['confianza_color']
+
+        partidos_local = df[df["HomeTeam"] == equipo_local]
+        partidos_visita = df[df["AwayTeam"] == equipo_visitante]
+        h2h = df[
+            ((df["HomeTeam"] == equipo_local) & (df["AwayTeam"] == equipo_visitante)) |
+            ((df["HomeTeam"] == equipo_visitante) & (df["AwayTeam"] == equipo_local))
+        ]
 
         st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
         st.markdown("""<div style='width:100%;height:1px;background:linear-gradient(90deg,transparent,#1E2A35,transparent);margin-bottom:32px;'></div>""", unsafe_allow_html=True)
@@ -657,17 +1164,47 @@ if not es_mundial:
             </div>
             """, unsafe_allow_html=True)
 
-            st.markdown(f"""
-            <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px;">
-                <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px;
-                            color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
-                    Distribución de probabilidades
+            col_t1_left, col_t1_right = st.columns(2)
+            
+            with col_t1_left:
+                st.markdown(f"""
+                <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px; height:280px;">
+                    <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px;
+                                color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
+                        Distribución de probabilidades
+                    </div>
+                    {barra_gradiente(prob_local, color_resultado(prob_local), f"Victoria {equipo_local[:12]}")}
+                    {barra_gradiente(prob_empate, color_resultado(prob_empate), "Empate")}
+                    {barra_gradiente(prob_visit, color_resultado(prob_visit), f"Victoria {equipo_visitante[:12]}")}
                 </div>
-                {barra_gradiente(prob_local, color_resultado(prob_local), f"Victoria {equipo_local[:12]}")}
-                {barra_gradiente(prob_empate, color_resultado(prob_empate), "Empate")}
-                {barra_gradiente(prob_visit, color_resultado(prob_visit), f"Victoria {equipo_visitante[:12]}")}
-            </div>
-            """, unsafe_allow_html=True)
+                """, unsafe_allow_html=True)
+                
+            with col_t1_right:
+                marcadores_top = obtener_marcadores_probables(goles_favor_local, goles_favor_visit, top_n=4)
+                marcadores_items = []
+                for (gl, gv), prob in marcadores_top:
+                    pct = int(prob * 100)
+                    marcadores_items.append(
+                        f"<div style='display:flex; justify-content:space-between; align-items:center; background:#161B22; border:1px solid #30363D; border-radius:8px; padding:8px 16px; margin-bottom:8px;'>"
+                        f"  <div style='display:flex; align-items:center; gap:8px; font-family:\"Bebas Neue\",sans-serif; font-size:18px; color:#E8EDF2; letter-spacing:1.5px;'>"
+                        f"    {escudo_html(equipo_local, 20)}"
+                        f"    <span>{gl} — {gv}</span>"
+                        f"    {escudo_html(equipo_visitante, 20)}"
+                        f"  </div>"
+                        f"  <span style='font-family:\"Space Mono\",monospace; font-size:14px; color:#2ECC71; font-weight:600;'>{pct}%</span>"
+                        f"</div>"
+                    )
+                marcadores_html = "".join(marcadores_items)
+                
+                st.markdown(f"""
+                <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:24px 28px; height:280px;">
+                    <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px;
+                                color:#4A6075; text-transform:uppercase; margin-bottom:20px;">
+                        Marcadores más probables (Poisson)
+                    </div>
+                    {marcadores_html}
+                </div>
+                """, unsafe_allow_html=True)
 
             st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
             col1, col2, col3, col4 = st.columns(4)
@@ -690,6 +1227,10 @@ if not es_mundial:
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+
+            st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+            if st.button("🏟️  SIMULAR PARTIDO EN VIVO", key="sim_ligas"):
+                simular_partido_en_vivo(equipo_local, equipo_visitante, goles_favor_local, goles_contra_local, COLOR_PRIMARIO, COLOR_ACENTO)
 
         with tab2:
             if total_h2h == 0:
@@ -786,6 +1327,15 @@ if not es_mundial:
         confianza_color = "#2ECC71" if confianza == "ALTA" else "#F39C12" if confianza == "MEDIA" else "#E74C3C"
         confianza_texto = "alta" if confianza == "ALTA" else "media" if confianza == "MEDIA" else "baja"
 
+        # Determinar escudo veredicto
+        if "Victoria" in resultado_texto:
+            if equipo_local in resultado_texto:
+                escudo_veredicto = f"{escudo_html(equipo_local, 36)}"
+            else:
+                escudo_veredicto = f"{escudo_html(equipo_visitante, 36)}"
+        else:
+            escudo_veredicto = f"<div style='display:flex; gap:6px;'>{escudo_html(equipo_local, 28)}{escudo_html(equipo_visitante, 28)}</div>"
+
         st.markdown(f"""
         <div style="background:linear-gradient(135deg, #0D1117 0%, #111820 100%);
                     border:1px solid #1E2A35; border-left:4px solid {confianza_color};
@@ -794,8 +1344,10 @@ if not es_mundial:
                 <div>
                     <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px;
                                 color:#4A6075; text-transform:uppercase; margin-bottom:8px;">Veredicto final</div>
-                    <div style="font-family:'Bebas Neue',sans-serif; font-size:32px;
-                                color:#E8EDF2; letter-spacing:2px;">{resultado_texto}</div>
+                    <div style="display:flex; align-items:center; gap:12px; font-family:'Bebas Neue',sans-serif; font-size:32px; color:#E8EDF2; letter-spacing:2px;">
+                        {escudo_veredicto}
+                        <span>{resultado_texto}</span>
+                    </div>
                     <div style="font-family:'DM Sans',sans-serif; font-size:13px;
                                 color:#4A6075; margin-top:4px;">
                         El modelo sugiere este resultado con confianza {confianza_texto}
@@ -974,6 +1526,11 @@ else:
         st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
         predecir_mundial = st.button("⚽  PREDECIR MUNDIAL")
 
+        if st.session_state.pred_resultado_mundial is not None:
+            if (st.session_state.pred_resultado_mundial['sel_local'] != sel_local or
+                st.session_state.pred_resultado_mundial['sel_visit'] != sel_visit):
+                st.session_state.pred_resultado_mundial = None
+
         if predecir_mundial:
             if sel_local == sel_visit:
                 st.markdown(f"""
@@ -1026,14 +1583,45 @@ else:
                 goles_l = round(max(0.5, (prob_local_m * 2.8) + np.random.uniform(-0.2, 0.2)), 1)
                 goles_v = round(max(0.5, (prob_visit_m * 2.8) + np.random.uniform(-0.2, 0.2)), 1)
 
+                st.session_state.pred_resultado_mundial = {
+                    'sel_local': sel_local,
+                    'sel_visit': sel_visit,
+                    'ranking_local': ranking_local,
+                    'ranking_visit': ranking_visit,
+                    'fase': fase,
+                    'prob_local_m': prob_local_m,
+                    'prob_empate_m': prob_empate_m,
+                    'prob_visit_m': prob_visit_m,
+                    'prob_max_m': prob_max_m,
+                    'resultado_m': resultado_m,
+                    'color_pred_m': color_pred_m,
+                    'goles_l': goles_l,
+                    'goles_v': goles_v
+                }
+
             except Exception as e:
                 st.error(f"Error al predecir: {e}")
                 st.stop()
 
+        if st.session_state.pred_resultado_mundial is not None:
+            m = st.session_state.pred_resultado_mundial
+            sel_local = m['sel_local']
+            sel_visit = m['sel_visit']
+            ranking_local = m['ranking_local']
+            ranking_visit = m['ranking_visit']
+            fase = m['fase']
+            prob_local_m = m['prob_local_m']
+            prob_empate_m = m['prob_empate_m']
+            prob_visit_m = m['prob_visit_m']
+            prob_max_m = m['prob_max_m']
+            resultado_m = m['resultado_m']
+            color_pred_m = m['color_pred_m']
+            goles_l = m['goles_l']
+            goles_v = m['goles_v']
+
             st.markdown("<div style='height:32px'></div>", unsafe_allow_html=True)
             st.markdown(f"""<div style='width:100%;height:1px;background:linear-gradient(90deg,transparent,#C9A84C44,transparent);margin-bottom:32px;'></div>""", unsafe_allow_html=True)
 
-            # Tabs resultado
             r_tab1, r_tab2 = st.tabs(["🏆  RESULTADO", "📊  ANÁLISIS"])
 
             with r_tab1:
@@ -1110,15 +1698,49 @@ else:
                         f"</div>"
                         f"</div>"
                     )
-                html_barras_m = (
-                    "<div style='background:#0E0F0D;border:1px solid #2A2410;border-radius:16px;padding:24px 28px;'>"
-                    "<div style='font-family:Space Mono,monospace;font-size:10px;letter-spacing:3px;color:#6B5C30;text-transform:uppercase;margin-bottom:20px;'>Distribución de probabilidades</div>"
-                    + barra_m(prob_local_m, "#C9A84C", f"Victoria {sel_local[:14]}")
-                    + barra_m(prob_empate_m, "#2A398D", "Empate")
-                    + barra_m(prob_visit_m, "#E61D25", f"Victoria {sel_visit[:14]}")
-                    + "</div>"
-                )
-                st.markdown(html_barras_m, unsafe_allow_html=True)
+                col_m_left, col_m_right = st.columns(2)
+                
+                with col_m_left:
+                    html_barras_m = (
+                        "<div style='background:#0E0F0D;border:1px solid #2A2410;border-radius:16px;padding:24px 28px;height:280px;'>"
+                        "<div style='font-family:Space Mono,monospace;font-size:10px;letter-spacing:3px;color:#6B5C30;text-transform:uppercase;margin-bottom:20px;'>Distribución de probabilidades</div>"
+                        + barra_m(prob_local_m, "#C9A84C", f"Victoria {sel_local[:14]}")
+                        + barra_m(prob_empate_m, "#2A398D", "Empate")
+                        + barra_m(prob_visit_m, "#E61D25", f"Victoria {sel_visit[:14]}")
+                        + "</div>"
+                    )
+                    st.markdown(html_barras_m, unsafe_allow_html=True)
+                    
+                with col_m_right:
+                    marcadores_top = obtener_marcadores_probables(goles_l, goles_v, top_n=4)
+                    marcadores_items = []
+                    for (gl, gv), prob in marcadores_top:
+                        pct = int(prob * 100)
+                        marcadores_items.append(
+                            f"<div style='display:flex; justify-content:space-between; align-items:center; background:#1E2A3555; border:1px solid #2A2410; border-radius:8px; padding:8px 16px; margin-bottom:8px;'>"
+                            f"  <div style='display:flex; align-items:center; gap:8px; font-family:\"Bebas Neue\",sans-serif; font-size:18px; color:#E8EDF2; letter-spacing:1.5px;'>"
+                            f"    {bandera_html(sel_local, 20)}"
+                            f"    <span>{gl} — {gv}</span>"
+                            f"    {bandera_html(sel_visit, 20)}"
+                            f"  </div>"
+                            f"  <span style='font-family:\"Space Mono\",monospace; font-size:14px; color:#C9A84C; font-weight:600;'>{pct}%</span>"
+                            f"</div>"
+                        )
+                    marcadores_html = "".join(marcadores_items)
+                    
+                    st.markdown(f"""
+                    <div style="background:#0E0F0D; border:1px solid #2A2410; border-radius:16px; padding:24px 28px; height:280px;">
+                        <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px;
+                                    color:#6B5C30; text-transform:uppercase; margin-bottom:20px;">
+                            Marcadores más probables (Poisson)
+                        </div>
+                        {marcadores_html}
+                    </div>
+                    """, unsafe_allow_html=True)
+
+                st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+                if st.button("🏟️  SIMULAR PARTIDO EN VIVO", key="sim_mundial"):
+                    simular_partido_en_vivo(sel_local, sel_visit, goles_l, goles_v, COLOR_PRIMARIO, COLOR_ACENTO, mundial=True, es_eliminatoria=(fase != "Grupos"))
 
             with r_tab2:
                 confianza_m = "ALTA" if prob_max_m >= 0.55 else "MEDIA" if prob_max_m >= 0.40 else "BAJA"
@@ -1149,6 +1771,15 @@ else:
                     unsafe_allow_html=True
                 )
 
+            # Determinar bandera veredicto
+            if "Victoria" in resultado_m:
+                if sel_local in resultado_m:
+                    bandera_veredicto = f"{bandera_html(sel_local, 36)}"
+                else:
+                    bandera_veredicto = f"{bandera_html(sel_visit, 36)}"
+            else:
+                bandera_veredicto = f"<div style='display:flex; gap:6px;'>{bandera_html(sel_local, 28)}{bandera_html(sel_visit, 28)}</div>"
+
             # Veredicto Mundial
             st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
             st.markdown(f"""
@@ -1161,8 +1792,10 @@ else:
                                     color:#6B5C30; text-transform:uppercase; margin-bottom:8px;">
                             🏆 Veredicto Mundial 2026
                         </div>
-                        <div style="font-family:'Bebas Neue',sans-serif; font-size:32px;
-                                    color:#E8EDF2; letter-spacing:2px;">{resultado_m}</div>
+                        <div style="display:flex; align-items:center; gap:12px; font-family:'Bebas Neue',sans-serif; font-size:32px; color:#E8EDF2; letter-spacing:2px;">
+                            {bandera_veredicto}
+                            <span>{resultado_m}</span>
+                        </div>
                         <div style="font-family:'DM Sans',sans-serif; font-size:13px;
                                     color:#6B5C30; margin-top:4px;">
                             Análisis basado en ranking FIFA y estadísticas históricas
