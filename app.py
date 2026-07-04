@@ -28,7 +28,7 @@ MUNDIAL_2026_GRUPOS = {
     "Grupo F": ["Países Bajos", "Japón", "Túnez", "Noruega"],
     "Grupo G": ["Bélgica", "Egipto", "Irán", "Nueva Zelanda"],
     "Grupo H": ["España", "Cabo Verde", "Arabia Saudita", "Uruguay"],
-    "Grupo I": ["Francia", "Senegal", "Irak", "Noruega"],
+    "Grupo I": ["Francia", "Senegal", "Irak", "Suecia"],
     "Grupo J": ["Argentina", "Argelia", "Austria", "Jordania"],
     "Grupo K": ["Portugal", "Uzbekistán", "Colombia", "R.D. del Congo"],
     "Grupo L": ["Inglaterra", "Croacia", "Ghana", "Panamá"],
@@ -79,6 +79,7 @@ BANDERAS_ARCHIVOS = {
     "Suiza":           "Switzerland.png",
     "Turquía":         "Turkey.png",
     "Uruguay":         "Uruguay.png",
+    "Suecia":          "Sweden.png",
     # Sin archivo local → fallback emoji
     "Bosnia":          "Bosnia_and_Herzegovina.png",
     "Cabo Verde":      "Cape_Verde.png",
@@ -111,7 +112,7 @@ EMOJIS_SELECCIONES = {
     "Portugal": "🇵🇹", "Qatar": "🇶🇦", "R.D. del Congo": "🇨🇩",
     "Rep. Checa": "🇨🇿", "Senegal": "🇸🇳", "Sudáfrica": "🇿🇦",
     "Suiza": "🇨🇭", "Túnez": "🇹🇳", "Turquía": "🇹🇷",
-    "Uruguay": "🇺🇾", "Uzbekistán": "🇺🇿",
+    "Uruguay": "🇺🇾", "Uzbekistán": "🇺🇿", "Suecia": "🇸🇪",
 }
 
 # ─── ESTADO DE SESIÓN ──────────────────────────────────────────────────────────
@@ -352,7 +353,7 @@ FIFA_RANKINGS_2026 = {
     "Países Bajos": 7, "Japón": 18, "Túnez": 41, "Noruega": 47,
     "Bélgica": 3, "Egipto": 36, "Irán": 20, "Nueva Zelanda": 104,
     "España": 8, "Cabo Verde": 65, "Arabia Saudita": 53, "Uruguay": 15,
-    "Francia": 2, "Senegal": 17, "Irak": 58,
+    "Francia": 2, "Senegal": 17, "Irak": 58, "Suecia": 28,
     "Argentina": 1, "Argelia": 43, "Austria": 25, "Jordania": 71,
     "Portugal": 6, "Uzbekistán": 64, "Colombia": 14, "R.D. del Congo": 61,
     "Inglaterra": 4, "Croacia": 10, "Ghana": 68, "Panamá": 45,
