@@ -547,6 +547,80 @@ def simular_torneo_mundial_completo():
         "campeon": campeon
     }
 
+def simular_torneo_desde_r32(winners, runners, thirds_teams):
+    fixture_r32 = [
+        (winners["Grupo A"], runners["Grupo B"]),
+        (winners["Grupo C"], thirds_teams[0]),
+        (winners["Grupo D"], runners["Grupo C"]),
+        (winners["Grupo E"], thirds_teams[1]),
+        (winners["Grupo F"], runners["Grupo E"]),
+        (winners["Grupo G"], thirds_teams[2]),
+        (winners["Grupo H"], runners["Grupo G"]),
+        (winners["Grupo I"], thirds_teams[3]),
+        (winners["Grupo J"], runners["Grupo I"]),
+        (winners["Grupo K"], thirds_teams[4]),
+        (winners["Grupo L"], runners["Grupo K"]),
+        (winners["Grupo B"], thirds_teams[5]),
+        (runners["Grupo A"], thirds_teams[6]),
+        (runners["Grupo D"], thirds_teams[7]),
+        (runners["Grupo F"], runners["Grupo H"]),
+        (runners["Grupo J"], runners["Grupo L"])
+    ]
+    
+    r32_resultados = []
+    r16_equipos = []
+    for t_l, t_v in fixture_r32:
+        gl, gv, ganador, desc = simular_resultado_partido(t_l, t_v, es_eliminatoria=True, fase="Octavos")
+        r32_resultados.append((t_l, t_v, gl, gv, ganador, desc))
+        r16_equipos.append(ganador)
+        
+    fixture_r16 = []
+    for i in range(0, 16, 2):
+        fixture_r16.append((r16_equipos[i], r16_equipos[i+1]))
+        
+    r16_resultados = []
+    qf_equipos = []
+    for t_l, t_v in fixture_r16:
+        gl, gv, ganador, desc = simular_resultado_partido(t_l, t_v, es_eliminatoria=True, fase="Octavos")
+        r16_resultados.append((t_l, t_v, gl, gv, ganador, desc))
+        qf_equipos.append(ganador)
+        
+    fixture_qf = []
+    for i in range(0, 8, 2):
+        fixture_qf.append((qf_equipos[i], qf_equipos[i+1]))
+        
+    qf_resultados = []
+    sf_equipos = []
+    for t_l, t_v in fixture_qf:
+        gl, gv, ganador, desc = simular_resultado_partido(t_l, t_v, es_eliminatoria=True, fase="Cuartos")
+        qf_resultados.append((t_l, t_v, gl, gv, ganador, desc))
+        sf_equipos.append(ganador)
+        
+    fixture_sf = [
+        (sf_equipos[0], sf_equipos[1]),
+        (sf_equipos[2], sf_equipos[3])
+    ]
+    
+    sf_resultados = []
+    final_equipos = []
+    for t_l, t_v in fixture_sf:
+        gl, gv, ganador, desc = simular_resultado_partido(t_l, t_v, es_eliminatoria=True, fase="Semifinal")
+        sf_resultados.append((t_l, t_v, gl, gv, ganador, desc))
+        final_equipos.append(ganador)
+        
+    t_l, t_v = final_equipos[0], final_equipos[1]
+    gl, gv, campeon, desc = simular_resultado_partido(t_l, t_v, es_eliminatoria=True, fase="Final")
+    final_resultado = (t_l, t_v, gl, gv, campeon, desc)
+    
+    return {
+        "r32": r32_resultados,
+        "r16": r16_resultados,
+        "qf": qf_resultados,
+        "sf": sf_resultados,
+        "final": final_resultado,
+        "campeon": campeon
+    }
+
 def simular_partido_en_vivo(local, visita, goles_l_esp, goles_v_esp, color_l, color_v, mundial=False, es_eliminatoria=False):
     # Definir imágenes
     img_l = bandera_html(local, 32) if mundial else escudo_html(local, 32)
@@ -2092,16 +2166,103 @@ else:
         </div>
         """, unsafe_allow_html=True)
         
-        col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
-        with col_btn2:
-            simular_torneo_click = st.button("🏟️  SIMULAR TORNEO COMPLETO", key="btn_simular_torneo", use_container_width=True)
-            
+        # Modo de simulación
+        modo_simulacion = st.radio(
+            "Selecciona el modo de simulación",
+            ["Simular Fase de Grupos completa con IA", "Configurar clasificados manualmente (Mundial en curso)"],
+            horizontal=True
+        )
+        
+        st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+        
         if "simulacion_torneo" not in st.session_state:
             st.session_state.simulacion_torneo = None
             
-        if simular_torneo_click:
-            st.session_state.simulacion_torneo = simular_torneo_mundial_completo()
-            st.balloons()
+        if modo_simulacion == "Simular Fase de Grupos completa con IA":
+            col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+            with col_btn2:
+                simular_torneo_click = st.button("🏟️  SIMULAR TORNEO COMPLETO", key="btn_simular_torneo", use_container_width=True)
+                
+            if simular_torneo_click:
+                st.session_state.simulacion_torneo = simular_torneo_mundial_completo()
+                st.balloons()
+        else:
+            st.markdown("""
+            <div style="background:#0E0F0D; border:1px solid #2A2410; border-radius:12px; padding:16px; margin-bottom:20px;">
+                <div style="font-family:'Space Mono',monospace; font-size:12px; color:#C9A84C; font-weight:bold; margin-bottom:8px;">
+                    🔧 CONFIGURADOR DE CLASIFICADOS (Ronda de 32)
+                </div>
+                <div style="font-family:'DM Sans',sans-serif; font-size:12px; color:#6B5C30; line-height:1.4;">
+                    Selecciona qué equipos clasifican en cada grupo. Las opciones para 2º y 3º lugar se filtrarán automáticamente para evitar duplicaciones.
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
+            
+            selected_winners = {}
+            selected_runners = {}
+            selected_thirds_all = {}
+            
+            col_g_grid = st.columns(3)
+            for idx, (grupo_nombre, equipos) in enumerate(MUNDIAL_2026_GRUPOS.items()):
+                col_target = col_g_grid[idx % 3]
+                with col_target:
+                    st.markdown(f"""
+                    <div style="font-family:'Bebas Neue',sans-serif; font-size:16px; color:#C9A84C; margin-top:8px; margin-bottom:4px; border-bottom:1px solid #2A2410; padding-bottom:2px;">
+                        {grupo_nombre}
+                    </div>
+                    """, unsafe_allow_html=True)
+                    win = st.selectbox(f"🥇 1º", equipos, key=f"win_sel_{grupo_nombre}", index=0, label_visibility="visible")
+                    run = st.selectbox(f"🥈 2º", [e for e in equipos if e != win], key=f"run_sel_{grupo_nombre}", index=0, label_visibility="visible")
+                    third = st.selectbox(f"🥉 3º", [e for e in equipos if e not in [win, run]], key=f"third_sel_{grupo_nombre}", index=0, label_visibility="visible")
+                    
+                    selected_winners[grupo_nombre] = win
+                    selected_runners[grupo_nombre] = run
+                    selected_thirds_all[grupo_nombre] = third
+                    
+            st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
+            
+            thirds_list = list(selected_thirds_all.values())
+            st.markdown("""
+            <div style="font-family:'Space Mono',monospace; font-size:12px; color:#C9A84C; font-weight:bold; margin-bottom:8px;">
+                🥉 SELECCIÓN DE LOS 8 MEJORES TERCEROS
+            </div>
+            """, unsafe_allow_html=True)
+            selected_thirds = st.multiselect(
+                "Selecciona exactamente 8 mejores terceros clasificados",
+                options=thirds_list,
+                default=thirds_list[:8],
+                key="multiselect_best_thirds"
+            )
+            
+            st.markdown("<div style='height:16px'></div>", unsafe_allow_html=True)
+            puedo_simular = len(selected_thirds) == 8
+            
+            if not puedo_simular:
+                st.warning(f"Debes seleccionar exactamente 8 mejores terceros. Actualmente has seleccionado {len(selected_thirds)}.")
+                
+            col_btn1, col_btn2, col_btn3 = st.columns([1, 2, 1])
+            with col_btn2:
+                simular_torneo_click = st.button(
+                    "🏟️  SIMULAR DESDE RONDA DE 32",
+                    key="btn_simular_torneo_manual",
+                    use_container_width=True,
+                    disabled=not puedo_simular
+                )
+                
+            if simular_torneo_click and puedo_simular:
+                sim_res = simular_torneo_desde_r32(selected_winners, selected_runners, selected_thirds)
+                st.session_state.simulacion_torneo = {
+                    "r32": sim_res["r32"],
+                    "r16": sim_res["r16"],
+                    "qf": sim_res["qf"],
+                    "sf": sim_res["sf"],
+                    "final": sim_res["final"],
+                    "campeon": sim_res["campeon"],
+                    "resultados_grupos": {g: [selected_winners[g], selected_runners[g], selected_thirds_all[g]] for g in MUNDIAL_2026_GRUPOS.keys()},
+                    "mejores_terceros": selected_thirds,
+                    "standings": None
+                }
+                st.balloons()
             
         sim = st.session_state.simulacion_torneo
         
@@ -2197,11 +2358,14 @@ else:
                     
                     filas_html = []
                     for pos, eq in enumerate(equipos_ordenados):
-                        pts = sim["standings"][grupo][eq]["pts"]
-                        dg = sim["standings"][grupo][eq]["dg"]
-                        gf = sim["standings"][grupo][eq]["gf"]
-                        
-                        dg_str = f"+{dg}" if dg > 0 else str(dg)
+                        if sim["standings"] is not None:
+                            pts = sim["standings"][grupo][eq]["pts"]
+                            dg = sim["standings"][grupo][eq]["dg"]
+                            dg_str = f"+{dg}" if dg > 0 else str(dg)
+                            stats_str = f"{pts} pts ({dg_str})"
+                        else:
+                            stats_str = "Clasificado" if pos < 2 else "Mejor Tercero" if eq in sim["mejores_terceros"] else "Eliminado"
+                            
                         bold_style = "font-weight:bold; color:#FFE066;" if pos < 2 else "color:#E8EDF2;"
                         if pos == 2 and eq in sim["mejores_terceros"]:
                             bold_style = "font-weight:bold; color:#2ECC71;"
@@ -2213,7 +2377,7 @@ else:
                             f"    {bandera_html(eq, 18)}"
                             f"    <span style='font-family:\"DM Sans\",sans-serif; font-size:13px;'>{eq}</span>"
                             f"  </div>"
-                            f"  <span style='font-family:\"Space Mono\",monospace; font-size:12px;'>{pts} pts ({dg_str})</span>"
+                            f"  <span style='font-family:\"Space Mono\",monospace; font-size:12px;'>{stats_str}</span>"
                             f"</div>"
                         )
                     filas_str = "".join(filas_html)
