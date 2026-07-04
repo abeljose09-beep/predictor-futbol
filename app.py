@@ -1354,11 +1354,35 @@ if not es_mundial:
             probs = modelo.predict_proba(features)[0]
             clases = modelo.classes_
             prob_dict = {c: p for c, p in zip(clases, probs)}
-            prob_local  = prob_dict.get("H", 0)
-            prob_empate = prob_dict.get("D", 0)
-            prob_visit  = prob_dict.get("A", 0)
+            prob_local_base  = prob_dict.get("H", 0)
+            prob_empate_base = prob_dict.get("D", 0)
+            prob_visit_base  = prob_dict.get("A", 0)
 
-            resultado_pred = max(prob_dict, key=prob_dict.get)
+            # Ajustes bayesianos
+            diff_forma = (racha_local - racha_visit) / 15.0
+            adj_forma = diff_forma * 0.12
+            
+            if total_h2h > 0:
+                win_pct_local_h2h = ganados_local / total_h2h
+                win_pct_visit_h2h = ganados_visit / total_h2h
+                diff_h2h = win_pct_local_h2h - win_pct_visit_h2h
+                adj_h2h = diff_h2h * 0.08
+            else:
+                adj_h2h = 0.0
+
+            prob_local_adj = prob_local_base + adj_forma + adj_h2h
+            prob_visit_adj = prob_visit_base - adj_forma - adj_h2h
+            
+            prob_local_adj = max(0.05, min(0.85, prob_local_adj))
+            prob_visit_adj = max(0.05, min(0.85, prob_visit_adj))
+            
+            total_probs = prob_local_adj + prob_empate_base + prob_visit_adj
+            prob_local = prob_local_adj / total_probs
+            prob_empate = prob_empate_base / total_probs
+            prob_visit = prob_visit_adj / total_probs
+
+            prob_dict_adj = {"H": prob_local, "D": prob_empate, "A": prob_visit}
+            resultado_pred = max(prob_dict_adj, key=prob_dict_adj.get)
             resultado_texto = {
                 "H": f"Victoria {equipo_local}",
                 "D": "Empate",
@@ -1390,6 +1414,13 @@ if not es_mundial:
                 'prob_local': prob_local,
                 'prob_empate': prob_empate,
                 'prob_visit': prob_visit,
+                'prob_local_base': prob_local_base,
+                'prob_empate_base': prob_empate_base,
+                'prob_visit_base': prob_visit_base,
+                'adj_forma': adj_forma,
+                'adj_h2h': adj_h2h,
+                'racha_local': racha_local,
+                'racha_visit': racha_visit,
                 'prob_max': prob_max,
                 'resultado_texto': resultado_texto,
                 'confianza': confianza,
@@ -1542,6 +1573,41 @@ if not es_mundial:
                         </div>
                     </div>
                     """, unsafe_allow_html=True)
+
+            # Desglose Bayesiano de la Predicción
+            prob_local_base = r['prob_local_base']
+            prob_empate_base = r['prob_empate_base']
+            prob_visit_base = r['prob_visit_base']
+            adj_forma = r['adj_forma']
+            adj_h2h = r['adj_h2h']
+            
+            sign_forma = "+" if adj_forma >= 0 else ""
+            sign_h2h = "+" if adj_h2h >= 0 else ""
+            
+            st.markdown(f"""
+            <div style="background:#0D1117; border:1px solid #1E2A35; border-radius:16px; padding:20px 24px; margin-top:20px; margin-bottom:20px;">
+                <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px;
+                            color:#4A6075; text-transform:uppercase; margin-bottom:12px;">
+                    🧠 DESGLOSE DEL ANÁLISIS PROBABILÍSTICO (AJUSTE BAYESIANO)
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1E2A3555; padding-bottom:8px; margin-bottom:8px;">
+                    <span style="font-family:'DM Sans',sans-serif; font-size:13px; color:#8B949E;">Predicción Base de la IA:</span>
+                    <span style="font-family:'Space Mono',monospace; font-size:13px; color:#E8EDF2;">Local {int(prob_local_base*100)}% | Empate {int(prob_empate_base*100)}% | Visita {int(prob_visit_base*100)}%</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1E2A3555; padding-bottom:8px; margin-bottom:8px;">
+                    <span style="font-family:'DM Sans',sans-serif; font-size:13px; color:#8B949E;">Ajuste de Racha / Forma Reciente ({r['racha_local']} vs {r['racha_visit']} pts):</span>
+                    <span style="font-family:'Space Mono',monospace; font-size:13px; color:{'#2ECC71' if adj_forma >= 0 else '#E74C3C'}; font-weight:bold;">{sign_forma}{int(adj_forma*100)}% al Local</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #1E2A3555; padding-bottom:8px; margin-bottom:8px;">
+                    <span style="font-family:'DM Sans',sans-serif; font-size:13px; color:#8B949E;">Ajuste por Enfrentamientos Directos (H2H Histórico):</span>
+                    <span style="font-family:'Space Mono',monospace; font-size:13px; color:{'#2ECC71' if adj_h2h >= 0 else '#E74C3C'}; font-weight:bold;">{sign_h2h}{int(adj_h2h*100)}% al Local</span>
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; padding-top:4px;">
+                    <span style="font-family:'DM Sans',sans-serif; font-size:13px; color:#FFE066; font-weight:bold;">Probabilidad Final Ajustada:</span>
+                    <span style="font-family:'Space Mono',monospace; font-size:13px; color:#FFE066; font-weight:bold;">Local {int(prob_local*100)}% | Empate {int(prob_empate*100)}% | Visita {int(prob_visit*100)}%</span>
+                </div>
+            </div>
+            """, unsafe_allow_html=True)
 
             st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
             if st.button("🏟️  SIMULAR PARTIDO EN VIVO", key="sim_ligas"):
@@ -1833,8 +1899,10 @@ else:
             col_a, col_b, col_c = st.columns(3)
             with col_a:
                 ranking_local = st.slider("Ranking FIFA (local)", 1, 80, 10)
+                forma_local = st.slider("Forma local (últimos 5)", 0, 15, 8, key="m_forma_local")
             with col_b:
                 ranking_visit = st.slider("Ranking FIFA (visitante)", 1, 80, 15)
+                forma_visit = st.slider("Forma visitante (últimos 5)", 0, 15, 6, key="m_forma_visit")
             with col_c:
                 fase = st.selectbox("Fase del torneo", ["Grupos", "Octavos", "Cuartos", "Semifinal", "Final"])
 
@@ -1879,9 +1947,48 @@ else:
 
                 # Re-normalizar
                 total2 = prob_local_m + prob_empate_m + prob_visit_m
-                prob_local_m  /= total2
-                prob_empate_m /= total2
-                prob_visit_m  /= total2
+                prob_local_m_base  = prob_local_m / total2
+                prob_empate_m_base = prob_empate_m / total2
+                prob_visit_m_base  = prob_visit_m / total2
+
+                # H2H para selecciones en df
+                h2h_m = df[
+                    ((df["HomeTeam"] == sel_local) & (df["AwayTeam"] == sel_visit)) |
+                    ((df["HomeTeam"] == sel_visit) & (df["AwayTeam"] == sel_local))
+                ]
+                total_h2h_m = len(h2h_m)
+                ganados_local_m = len(h2h_m[
+                    ((h2h_m["HomeTeam"] == sel_local) & (h2h_m["FTR"] == "H")) |
+                    ((h2h_m["AwayTeam"] == sel_local) & (h2h_m["FTR"] == "A"))
+                ])
+                ganados_visit_m = len(h2h_m[
+                    ((h2h_m["HomeTeam"] == sel_visit) & (h2h_m["FTR"] == "H")) |
+                    ((h2h_m["AwayTeam"] == sel_visit) & (h2h_m["FTR"] == "A"))
+                ])
+                empates_h2h_m = len(h2h_m[h2h_m["FTR"] == "D"])
+
+                # Ajustes Bayesianos
+                diff_forma_m = (forma_local - forma_visit) / 15.0
+                adj_forma_m = diff_forma_m * 0.12
+                
+                if total_h2h_m > 0:
+                    win_pct_local_h2h_m = ganados_local_m / total_h2h_m
+                    win_pct_visit_h2h_m = ganados_visit_m / total_h2h_m
+                    diff_h2h_m = win_pct_local_h2h_m - win_pct_visit_h2h_m
+                    adj_h2h_m = diff_h2h_m * 0.08
+                else:
+                    adj_h2h_m = 0.0
+
+                prob_local_m_adj = prob_local_m_base + adj_forma_m + adj_h2h_m
+                prob_visit_m_adj = prob_visit_m_base - adj_forma_m - adj_h2h_m
+                
+                prob_local_m_adj = max(0.05, min(0.85, prob_local_m_adj))
+                prob_visit_m_adj = max(0.05, min(0.85, prob_visit_m_adj))
+                
+                total_m_probs = prob_local_m_adj + prob_empate_m_base + prob_visit_m_adj
+                prob_local_m = prob_local_m_adj / total_m_probs
+                prob_empate_m = prob_empate_m_base / total_m_probs
+                prob_visit_m = prob_visit_m_adj / total_m_probs
 
                 prob_max_m = max(prob_local_m, prob_empate_m, prob_visit_m)
                 if prob_max_m == prob_local_m:
@@ -1903,10 +2010,21 @@ else:
                     'sel_visit': sel_visit,
                     'ranking_local': ranking_local,
                     'ranking_visit': ranking_visit,
+                    'forma_local': forma_local,
+                    'forma_visit': forma_visit,
                     'fase': fase,
                     'prob_local_m': prob_local_m,
                     'prob_empate_m': prob_empate_m,
                     'prob_visit_m': prob_visit_m,
+                    'prob_local_m_base': prob_local_m_base,
+                    'prob_empate_m_base': prob_empate_m_base,
+                    'prob_visit_m_base': prob_visit_m_base,
+                    'adj_forma_m': adj_forma_m,
+                    'adj_h2h_m': adj_h2h_m,
+                    'total_h2h_m': total_h2h_m,
+                    'ganados_local_m': ganados_local_m,
+                    'ganados_visit_m': ganados_visit_m,
+                    'empates_h2h_m': empates_h2h_m,
                     'prob_max_m': prob_max_m,
                     'resultado_m': resultado_m,
                     'color_pred_m': color_pred_m,
@@ -2052,6 +2170,41 @@ else:
                         {marcadores_html}
                     </div>
                     """, unsafe_allow_html=True)
+
+                # Desglose Bayesiano de la Predicción Mundial
+                prob_local_m_base = m['prob_local_m_base']
+                prob_empate_m_base = m['prob_empate_m_base']
+                prob_visit_m_base = m['prob_visit_m_base']
+                adj_forma_m = m['adj_forma_m']
+                adj_h2h_m = m['adj_h2h_m']
+                
+                sign_forma_m = "+" if adj_forma_m >= 0 else ""
+                sign_h2h_m = "+" if adj_h2h_m >= 0 else ""
+                
+                st.markdown(f"""
+                <div style="background:#0E0F0D; border:1px solid #2A2410; border-radius:16px; padding:20px 24px; margin-top:20px; margin-bottom:20px;">
+                    <div style="font-family:'Space Mono',monospace; font-size:10px; letter-spacing:3px;
+                                color:#6B5C30; text-transform:uppercase; margin-bottom:12px;">
+                        🧠 DESGLOSE DEL ANÁLISIS PROBABILÍSTICO (AJUSTE BAYESIANO MUNDIAL)
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2A2410; padding-bottom:8px; margin-bottom:8px;">
+                        <span style="font-family:'DM Sans',sans-serif; font-size:13px; color:#6B5C30;">Predicción Base (Rankings FIFA):</span>
+                        <span style="font-family:'Space Mono',monospace; font-size:13px; color:#E8EDF2;">Local {int(prob_local_m_base*100)}% | Empate {int(prob_empate_m_base*100)}% | Visita {int(prob_visit_m_base*100)}%</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2A2410; padding-bottom:8px; margin-bottom:8px;">
+                        <span style="font-family:'DM Sans',sans-serif; font-size:13px; color:#6B5C30;">Ajuste de Racha / Forma Reciente ({m['forma_local']} vs {m['forma_visit']} pts):</span>
+                        <span style="font-family:'Space Mono',monospace; font-size:13px; color:{'#C9A84C' if adj_forma_m >= 0 else '#E61D25'}; font-weight:bold;">{sign_forma_m}{int(adj_forma_m*100)}% al Local</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid #2A2410; padding-bottom:8px; margin-bottom:8px;">
+                        <span style="font-family:'DM Sans',sans-serif; font-size:13px; color:#6B5C30;">Ajuste por Enfrentamientos Directos (H2H Histórico · {m['total_h2h_m']} part.):</span>
+                        <span style="font-family:'Space Mono',monospace; font-size:13px; color:{'#C9A84C' if adj_h2h_m >= 0 else '#E61D25'}; font-weight:bold;">{sign_h2h_m}{int(adj_h2h_m*100)}% al Local</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center; padding-top:4px;">
+                        <span style="font-family:'DM Sans',sans-serif; font-size:13px; color:#C9A84C; font-weight:bold;">Probabilidad Final Ajustada:</span>
+                        <span style="font-family:'Space Mono',monospace; font-size:13px; color:#C9A84C; font-weight:bold;">Local {int(prob_local_m*100)}% | Empate {int(prob_empate_m*100)}% | Visita {int(prob_visit_m*100)}%</span>
+                    </div>
+                </div>
+                """, unsafe_allow_html=True)
 
                 st.markdown("<div style='height:24px'></div>", unsafe_allow_html=True)
                 if st.button("🏟️  SIMULAR PARTIDO EN VIVO", key="sim_mundial"):
